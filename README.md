@@ -26,6 +26,13 @@ cd backend/Flagman.Api && dotnet run
 настройкой `Database:Provider` (`sqlite` | `postgres`), строка подключения — `ConnectionStrings:Postgres`.
 В этом режиме демо-данные не создаются (`Demo:SeedOnStart=false`), сброс отключён (`Demo:AllowReset=false`).
 
+### Деплой на Render
+
+В корне лежит `render.yaml` (Blueprint, Docker, бесплатный план). Запушьте репозиторий на GitHub,
+затем в Render: **New → Blueprint → выбрать репозиторий → Apply**. Порт берётся из `$PORT`, health-check — `/api/v1/summary`.
+Демо-база SQLite живёт внутри контейнера: после перезапуска или «засыпания» бесплатного сервиса она пересоздаётся
+со свежей демо-историей (даты считаются от текущего момента).
+
 ### Тесты
 
 ```bash
