@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { Dish, Order, OrderCheck } from '../api/types';
+import { Metric, StatusPill } from '../components/Cards';
 import { Icon } from '../components/Icon';
 import { SearchBox, SectionNav, Workspace } from '../components/Shell';
 import { Emoji, EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
@@ -80,17 +81,7 @@ export function OrdersScreen() {
       {view === 'menu' ? (
         <>
           <div className="toolbar">
-            <div className="legend">
-              <span>
-                <i className="sq sq--green" /> Можно приготовить, порц.
-              </span>
-              <span>
-                <i className="sq sq--red" /> Не хватает ингредиентов
-              </span>
-              <span>
-                <i className="sq sq--yellow" /> Ингредиенты с истекающим сроком
-              </span>
-            </div>
+            <span className="muted">Добавьте блюда в заказ — система проверит остатки и спишет ингредиенты по FEFO.</span>
           </div>
           <LoadingBar active={dishes.loading} />
           <div className="tray">
@@ -121,58 +112,57 @@ export function DishCard({ d, inOrder, onAdd, onOpen }: { d: Dish; inOrder?: num
   const missing = d.ingredients.filter((i) => i.missing > 0);
   const risky = d.ingredients.filter((i) => i.atRisk).length;
   const Tagname = onOpen ? 'button' : 'div';
+  const tier = !d.available ? 'critical' : d.hotLevel ? 'attention' : 'ok';
   return (
-    <Tagname className={`card ${d.available ? '' : 'card--critical card--muted'}`} style={{ cursor: onOpen ? 'pointer' : 'default' }} onClick={onOpen}>
-      <span className="card__counters">
-        <span className={`counter counter--red ${missing.length ? '' : 'is-zero'}`} title={missing.length ? `Не хватает: ${missing.map((m) => m.name).join(', ')}` : 'Все ингредиенты в наличии'}>
-          {missing.length}
+    <Tagname
+      className={`pcard ${onOpen ? 'pcard--clickable' : ''} ${tier === 'critical' ? 'pcard--critical pcard--muted' : ''}`}
+      onClick={onOpen}
+    >
+      <span className="pcard__head">
+        <span className="pcard__icon">
+          <Emoji>{d.icon}</Emoji>
         </span>
-        <span className={`counter counter--green ${d.maxServings ? '' : 'is-zero'}`} title={`Можно приготовить: ${d.maxServings} порц.`}>
-          {d.maxServings}
+        <span className="pcard__title">
+          <span className="pcard__name" style={{ display: 'block' }}>
+            {d.name}
+          </span>
+          <span className="pcard__sub" style={{ display: 'block' }}>
+            {d.category} · {d.ingredients.length} ингр.
+          </span>
         </span>
-        <span className={`counter counter--yellow ${risky ? '' : 'is-zero'}`} title="Ингредиентов с истекающим сроком">
-          {risky}
-        </span>
+        <StatusPill tier={tier}>{!d.available ? 'Стоп-лист' : d.hotLevel ? 'Продвигать' : 'Доступно'}</StatusPill>
       </span>
-      <span className="card__thumb">
-        <Emoji>{d.icon}</Emoji>
-        {!!inOrder && <span className="x">×{inOrder}</span>}
-        <span className={`card__badge card__badge--${d.available ? (d.hotLevel ? 'attention' : 'ok') : 'critical'}`} title={d.available ? (d.hotLevel ? 'Горячее предложение' : 'Доступно') : 'В стоп-листе'}>
-          <Icon name={d.available ? (d.hotLevel ? 'flame' : 'check') : 'x'} />
-        </span>
+      <span className="pcard__metrics">
+        <Metric label="Можно порций" value={d.maxServings} tone={d.maxServings ? 'ok' : 'crit'} />
+        <Metric label="Не хватает" value={missing.length} tone="crit" zero={!missing.length} title={missing.length ? `Не хватает: ${missing.map((m) => m.name).join(', ')}` : 'Все ингредиенты в наличии'} />
+        <Metric label="Истекает срок" value={risky} tone="warn" zero={!risky} title="Ингредиентов с истекающим сроком" />
       </span>
-      <span className="card__body">
-        <span className="card__name">{d.name}</span>
-        <span className="card__sub">
-          {d.category} · {d.ingredients.length} ингр.
-        </span>
+      <span className="pcard__rows">
         {d.available ? (
-          <span className="card__line">
-            Ограничивает: <b>{d.limitingProductName ?? '—'}</b>
+          <span className="pcard__row">
+            <span>Ограничивает</span>
+            <span>{d.limitingProductName ?? '—'}</span>
           </span>
         ) : (
-          <span className="card__line" title={missing.map((m) => m.name).join(', ')}>
-            ⛔ Нет: <b>{missing.map((m) => m.name).join(', ')}</b>
+          <span className="pcard__alert" title={missing.map((m) => m.name).join(', ')}>
+            Нет: {missing.map((m) => m.name).join(', ')}
           </span>
         )}
-        <span className="card__line" title={d.ingredients.map((i) => `${i.name} ${qty(i.perServing, i.unit)}`).join(', ')}>
-          {d.ingredients.map((i) => i.name.split(' ')[0]).join(', ')}
-        </span>
-        <span className="card__foot">
-          <span>
-            <span className="card__status">{d.available ? (d.hotLevel ? '🔥 Продвигать' : 'Доступно') : 'Стоп-лист'}</span>
-            <span className="card__big">
-              {d.maxServings}
-              <small>порц.</small>
-            </span>
-          </span>
-          {onAdd && (
-            <button className="open-btn" onClick={onAdd} aria-label={`Добавить «${d.name}» в заказ`} title="Добавить порцию">
-              <Icon name="plus" />
-            </button>
-          )}
+        <span className="pcard__row" title={d.ingredients.map((i) => `${i.name} ${qty(i.perServing, i.unit)}`).join(', ')}>
+          <span>Состав</span>
+          <span>{d.ingredients.map((i) => i.name.split(' ')[0]).join(', ')}</span>
         </span>
       </span>
+      {onAdd && (
+        <span className="pcard__foot">
+          <span className="muted" style={{ fontSize: 12.5 }}>
+            {inOrder ? `В заказе: ${inOrder} порц.` : ''}
+          </span>
+          <button className="btn btn--sm btn--blue" onClick={onAdd} aria-label={`Добавить «${d.name}» в заказ`}>
+            <Icon name="plus" /> В заказ
+          </button>
+        </span>
+      )}
     </Tagname>
   );
 }
@@ -228,7 +218,7 @@ function OrderComposer({ lines, dishes, add, clear }: { lines: Lines; dishes: Di
       </div>
       <div className="rightbar__body">
         {entries.length === 0 ? (
-          <EmptyState dark icon="🧾" title="Заказ пуст" text="Добавьте блюда кнопкой «+» в меню." />
+          <EmptyState icon="📋" title="Заказ пуст" text="Добавьте блюда из меню кнопкой «В заказ»." />
         ) : (
           entries.map(({ dish, servings }) =>
             dish ? (
@@ -282,7 +272,6 @@ function CheckDialog({ check, onClose, onPlace }: { check: OrderCheck; onClose: 
   return (
     <Modal
       title={check.canFulfill ? 'Заказ можно выполнить' : 'Ингредиентов не хватает'}
-      icon={check.canFulfill ? '✅' : '⛔'}
       onClose={onClose}
       size="md"
       footer={
@@ -298,7 +287,7 @@ function CheckDialog({ check, onClose, onPlace }: { check: OrderCheck; onClose: 
         </>
       }
     >
-      {check.reason && <p style={{ margin: 0, color: '#ff8a84' }}>{check.reason}</p>}
+      {check.reason && <p style={{ margin: 0, color: 'var(--crit)' }}>{check.reason}</p>}
       <div className="sheet table-wrap">
         <table className="table">
           <thead>
@@ -319,7 +308,7 @@ function CheckDialog({ check, onClose, onPlace }: { check: OrderCheck; onClose: 
                 </td>
                 <td className="num">{qty(r.required, r.unit)}</td>
                 <td className="num">{qty(r.available, r.unit)}</td>
-                <td className="num">{r.missing > 0 ? <b style={{ color: '#8c231e' }}>{qty(r.missing, r.unit)}</b> : '—'}</td>
+                <td className="num">{r.missing > 0 ? <b style={{ color: 'var(--crit)' }}>{qty(r.missing, r.unit)}</b> : '—'}</td>
                 <td style={{ fontSize: 12.5 }}>
                   {r.fefoPlan.length
                     ? r.fefoPlan.map((c) => `${c.batchCode} (до ${c.batchExpiresAt ? dateShort(c.batchExpiresAt, tz) : '—'}): ${qty(c.quantity, c.unit)}`).join('; ')
@@ -336,7 +325,7 @@ function CheckDialog({ check, onClose, onPlace }: { check: OrderCheck; onClose: 
 
 function OrderResult({ order, onClose }: { order: Order; onClose: () => void }) {
   return (
-    <Modal title={`Заказ ${order.number}: ${order.status === 'completed' ? 'выполнен' : 'отклонён'}`} icon={order.status === 'completed' ? '✅' : '⛔'} onClose={onClose} size="md">
+    <Modal title={`Заказ ${order.number}: ${order.status === 'completed' ? 'выполнен' : 'отклонён'}`} onClose={onClose} size="md">
       <OrderBody order={order} />
     </Modal>
   );

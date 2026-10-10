@@ -37,7 +37,7 @@ export function StatsScreen() {
       }
     >
       <LoadingBar active={q.loading} />
-      <div className="tray" style={{ background: '#a9a9a9' }}>
+      <div className="tray">
         <Loadable q={q}>
           {(s) => (
             <div className="stack">
@@ -106,7 +106,7 @@ export function StatsScreen() {
                           <td>
                             <div className="row" style={{ flexWrap: 'nowrap', gap: 6 }}>
                               <div style={{ flex: 1 }}>
-                                <Bar value={f.wasteRatio} color={f.wasteRatio > 0.15 ? '#b3302a' : SERIES.secondary} />
+                                <Bar value={f.wasteRatio} color={f.wasteRatio > 0.15 ? '#c62828' : SERIES.secondary} />
                               </div>
                               <span className="pill-num" style={{ width: 42, textAlign: 'right' }}>
                                 {Math.round(f.wasteRatio * 100)}%

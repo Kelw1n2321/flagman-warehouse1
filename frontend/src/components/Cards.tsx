@@ -1,21 +1,35 @@
+import type { ReactNode } from 'react';
 import type { Batch, Product } from '../api/types';
 import { compact, EXPIRY_LABEL, humanDate, qty, relative, RISK_LABEL, riskTier, TIER_LABEL, unitLabel } from '../lib/format';
 import { Icon } from './Icon';
 import { Emoji } from './ui';
 
-function Counter({ color, value, label }: { color: 'red' | 'green' | 'yellow' | 'gray'; value: number | string; label: string }) {
-  const zero = value === 0 || value === '0';
+export type Tone = 'ok' | 'warn' | 'crit' | 'neutral';
+
+/** Показатель карточки: значение + подпись; цвет дублирует смысл, а не заменяет его. */
+export function Metric({ label, value, tone, zero, title }: { label: string; value: ReactNode; tone: Tone; zero?: boolean; title?: string }) {
   return (
-    <span className={`counter counter--${color} ${zero ? 'is-zero' : ''}`} title={label} aria-label={label}>
-      {typeof value === 'number' ? compact(value) : value}
+    <span className={`metric ${tone === 'neutral' ? '' : `metric--${tone}`} ${zero ? 'is-zero' : ''}`} title={title}>
+      <span className="metric__value">{value}</span>
+      <span className="metric__label">{label}</span>
     </span>
   );
 }
 
-function TierBadge({ tier }: { tier: 'ok' | 'attention' | 'critical' }) {
+export function StatusPill({ tier, children }: { tier: 'ok' | 'attention' | 'critical' | 'info'; children: ReactNode }) {
   return (
-    <span className={`card__badge card__badge--${tier}`} title={TIER_LABEL[tier]}>
-      <Icon name={tier === 'ok' ? 'check' : tier === 'attention' ? 'alert' : 'x'} />
+    <span className={`status status--${tier}`}>
+      <Icon name={tier === 'ok' ? 'check' : tier === 'info' ? 'clock' : tier === 'attention' ? 'alert' : 'x'} />
+      {children}
+    </span>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="pcard__row">
+      <span>{label}</span>
+      <span>{children}</span>
     </span>
   );
 }
@@ -38,122 +52,92 @@ export function ProductCard({
   const tier = riskTier(p.risk, p.blockedDishes.length > 0);
   const atRisk = p.expiringSoon + p.expiringCritical;
   const deficit = Math.max(0, p.minStock - p.available);
-  const redValue = p.expired > 0 ? p.expired : p.belowMinimum ? deficit : 0;
-  const redLabel =
-    p.expired > 0
-      ? `Просрочено: ${qty(p.expired, p.unit)} (не используется)`
-      : p.belowMinimum
-        ? `Дефицит до минимума: ${qty(deficit, p.unit)}`
-        : 'Просрочки и дефицита нет';
   const u = unitLabel(p.unit);
+  const statusText = tier === 'ok' ? TIER_LABEL.ok : RISK_LABEL[p.risk === 'ok' ? 'low' : p.risk];
 
   return (
     <button
-      className={`card ${tier === 'critical' ? 'card--critical' : ''} ${selected ? 'is-selected' : ''}`}
+      className={`pcard pcard--clickable ${tier === 'critical' ? 'pcard--critical' : tier === 'attention' ? 'pcard--attention' : ''} ${selected ? 'is-selected' : ''}`}
       onClick={onOpen}
-      aria-label={`${p.name}: доступно ${qty(p.available, p.unit, { small: false })}, ${TIER_LABEL[tier]}`}
+      aria-label={`${p.name}: доступно ${qty(p.available, p.unit, { small: false })}, ${statusText}`}
     >
-      <span className="card__counters">
-        <Counter color="red" value={redValue} label={redLabel} />
-        <Counter color="green" value={p.available} label={`Доступно: ${qty(p.available, p.unit)}`} />
-        <Counter color="yellow" value={atRisk} label={`Истекает в ближайшие ${soonHours} ч: ${qty(atRisk, p.unit)}`} />
-      </span>
-      <span className="card__thumb">
-        <Emoji>{p.icon}</Emoji>
-        <span className="x" title="Количество партий">
-          ×{p.batchCount}
+      <span className="pcard__head">
+        <span className="pcard__icon">
+          <Emoji>{p.icon}</Emoji>
         </span>
-        <TierBadge tier={tier} />
-      </span>
-      <span className="card__body">
-        <span className="card__name">{p.name}</span>
-        <span className="card__sub">
-          {p.category} · {p.sku}
-        </span>
-        <span className="card__line">
-          Партий: <b>{p.batchCount}</b>
-          {p.total !== p.available && <> · всего {qty(p.total, p.unit)}</>}
-        </span>
-        <span className="card__line">
-          {atRisk > 0 ? (
-            <>
-              Истекает ≤{soonHours} ч: <b>{qty(atRisk, p.unit)}</b>
-            </>
-          ) : p.expired > 0 ? (
-            <>
-              Просрочено: <b>{qty(p.expired, p.unit)}</b>
-            </>
-          ) : (
-            <>Сроки в норме</>
-          )}
-        </span>
-        <span className="card__line">
-          Ближ. срок: <b>{p.earliestExpiry ? humanDate(p.earliestExpiry, tz, now) : '—'}</b>
-        </span>
-        {p.blockedDishes.length > 0 && (
-          <span className="card__line" title={p.blockedDishes.join(', ')}>
-            ⛔ Стоп: {p.blockedDishes.join(', ')}
+        <span className="pcard__title">
+          <span className="pcard__name" style={{ display: 'block' }}>
+            {p.name}
           </span>
+          <span className="pcard__sub" style={{ display: 'block' }}>
+            {p.category} · {p.sku}
+          </span>
+        </span>
+        <StatusPill tier={tier}>{statusText}</StatusPill>
+      </span>
+
+      <span className="pcard__metrics">
+        <Metric label={`Доступно, ${u}`} value={compact(p.available)} tone={p.belowMinimum ? 'warn' : 'ok'} zero={p.available === 0} title={`Доступно: ${qty(p.available, p.unit)}`} />
+        <Metric label={`Истекает ≤${soonHours} ч`} value={compact(atRisk)} tone="warn" zero={atRisk === 0} title={`Истекает в ближайшие ${soonHours} ч: ${qty(atRisk, p.unit)}`} />
+        {p.expired > 0 || !p.belowMinimum ? (
+          <Metric label="Просрочено" value={compact(p.expired)} tone="crit" zero={p.expired === 0} title={`Просрочено, не используется: ${qty(p.expired, p.unit)}`} />
+        ) : (
+          <Metric label="До минимума" value={`−${compact(deficit)}`} tone="crit" title={`Не хватает до минимального остатка ${qty(p.minStock, p.unit)}`} />
         )}
-        <span className="card__foot">
-          <span>
-            <span className="card__status">
-              {tier === 'ok' ? '✓' : '!'} {tier === 'ok' ? TIER_LABEL.ok : RISK_LABEL[p.risk === 'ok' ? 'low' : p.risk]}
-            </span>
-            <span className="card__big">
-              {compact(p.available)}
-              <small>{u}</small>
-            </span>
-          </span>
-          <span className="open-btn" aria-hidden>
-            <Icon name="chevron" />
-          </span>
-        </span>
       </span>
+
+      <span className="pcard__rows">
+        <Row label="Партий">
+          {p.batchCount}
+          {p.total !== p.available && ` · всего ${qty(p.total, p.unit)}`}
+        </Row>
+        <Row label="Ближайший срок">{p.earliestExpiry ? humanDate(p.earliestExpiry, tz, now) : '—'}</Row>
+        <Row label="Минимальный остаток">{qty(p.minStock, p.unit, { small: false })}</Row>
+      </span>
+      {p.blockedDishes.length > 0 && (
+        <span className="pcard__alert" title={p.blockedDishes.join(', ')}>
+          Стоп-лист: {p.blockedDishes.join(', ')}
+        </span>
+      )}
     </button>
   );
 }
 
-const EXPIRY_COLOR = { normal: 'green', soon: 'yellow', critical: 'red', expired: 'red' } as const;
+const EXPIRY_TIER = { normal: 'ok', soon: 'attention', critical: 'critical', expired: 'critical' } as const;
 
 export function BatchCard({ b, tz, now, onOpen }: { b: Batch; tz: string; now: Date; onOpen: () => void }) {
-  const tier = b.expiry === 'normal' ? 'ok' : b.expiry === 'soon' ? 'attention' : 'critical';
+  const expired = b.expiry === 'expired';
   return (
-    <button className={`card ${b.expiry === 'expired' ? 'card--critical' : ''}`} onClick={onOpen} aria-label={`Партия ${b.code} ${b.productName}`}>
-      <span className="card__counters">
-        <Counter color={EXPIRY_COLOR[b.expiry]} value={b.expiry === 'expired' ? '✕' : Math.max(0, Math.floor(b.hoursLeft / 24))} label={`${EXPIRY_LABEL[b.expiry]}: ${relative(b.hoursLeft)}`} />
-        <Counter color="green" value={b.expiry === 'expired' ? 0 : b.quantityRemaining} label={`Пригодно: ${qty(b.expiry === 'expired' ? 0 : b.quantityRemaining, b.unit)}`} />
-        <Counter color="gray" value={b.fefoRank ?? '—'} label={b.fefoRank ? `Очередь FEFO: ${b.fefoRank}` : 'Не участвует в FEFO'} />
-      </span>
-      <span className="card__thumb">
-        <Emoji>{b.icon}</Emoji>
-        <span className="x">{b.fefoRank === 1 ? 'FEFO' : ''}</span>
-        <TierBadge tier={tier} />
-      </span>
-      <span className="card__body">
-        <span className="card__name">{b.productName}</span>
-        <span className="card__sub">Партия {b.code}</span>
-        <span className="card__line">
-          Поставка: <b>{b.supplyNumber}</b>
+    <button
+      className={`pcard pcard--clickable ${b.expiry === 'critical' || expired ? 'pcard--critical' : b.expiry === 'soon' ? 'pcard--attention' : ''}`}
+      onClick={onOpen}
+      aria-label={`Партия ${b.code} ${b.productName}`}
+    >
+      <span className="pcard__head">
+        <span className="pcard__icon">
+          <Emoji>{b.icon}</Emoji>
         </span>
-        <span className="card__line">
-          Принята: {humanDate(b.receivedAt, tz, now)} · из {qty(b.quantityReceived, b.unit)}
-        </span>
-        <span className="card__line">
-          Срок: <b>{humanDate(b.expiresAt, tz, now)}</b> ({relative(b.hoursLeft)})
-        </span>
-        <span className="card__foot">
-          <span>
-            <span className="card__status">{EXPIRY_LABEL[b.expiry]}</span>
-            <span className="card__big">
-              {compact(b.quantityRemaining)}
-              <small>{unitLabel(b.unit)}</small>
-            </span>
+        <span className="pcard__title">
+          <span className="pcard__name" style={{ display: 'block' }}>
+            {b.productName}
           </span>
-          <span className="open-btn" aria-hidden>
-            <Icon name="chevron" />
+          <span className="pcard__sub" style={{ display: 'block' }}>
+            Партия {b.code}
           </span>
         </span>
+        <StatusPill tier={EXPIRY_TIER[b.expiry]}>{EXPIRY_LABEL[b.expiry]}</StatusPill>
+      </span>
+      <span className="pcard__metrics">
+        <Metric label={`Остаток, ${unitLabel(b.unit)}`} value={compact(b.quantityRemaining)} tone={expired ? 'crit' : 'ok'} />
+        <Metric label={expired ? 'Истёк' : 'До конца срока'} value={relative(b.hoursLeft).replace('через ', '')} tone={b.expiry === 'normal' ? 'neutral' : b.expiry === 'soon' ? 'warn' : 'crit'} />
+        <Metric label="Очередь FEFO" value={b.fefoRank ? `№${b.fefoRank}` : '—'} tone="neutral" zero={!b.fefoRank} />
+      </span>
+      <span className="pcard__rows">
+        <Row label="Поставка">{b.supplyNumber}</Row>
+        <Row label="Принята">
+          {humanDate(b.receivedAt, tz, now)} · {qty(b.quantityReceived, b.unit)}
+        </Row>
+        <Row label="Годна до">{humanDate(b.expiresAt, tz, now)}</Row>
       </span>
     </button>
   );

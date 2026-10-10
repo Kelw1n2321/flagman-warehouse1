@@ -32,16 +32,14 @@ function Terminal() {
     <div className="frame">
       <div className="screen">
         <TopBar />
-        <div className="hr" />
+        <BottomNav />
         <Readouts />
         {summaryError && !summary && (
-          <div className="toast toast--error" role="alert" style={{ margin: '6px 0' }}>
+          <div className="toast toast--error" role="alert" style={{ margin: '10px 20px 0' }}>
             <span>Сервер недоступен: {summaryError}. Запустите бэкенд (dotnet run) — интерфейс переподключится автоматически.</span>
           </div>
         )}
         <Current key={route.screen} />
-        <div className="hr" />
-        <BottomNav />
       </div>
       <ProductModalHost />
       <ConfirmHost />

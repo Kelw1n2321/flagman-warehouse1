@@ -26,24 +26,32 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <div className="hud" aria-label="Время ресторана и состояние системы">
-        <div className="hud__time">
-          <b>{timeOnly(now, tz)}</b>
-          <small>
-            {dayOfMonth(now, tz)} {weekday(now, tz)}
-          </small>
-        </div>
-        <div className="hud__side">
-          <span className="hud__chip" title={connected ? 'Обновления в реальном времени подключены' : 'Нет связи с сервером, переподключение…'}>
-            <i className={`dot ${connected ? 'dot--ok' : 'dot--bad'}`} /> {connected ? 'Онлайн' : 'Нет связи'}
-          </span>
-          <span className="hud__chip" title="Хранилище данных">
-            <Icon name="pulse" className="" /> {summary?.settings.mode === 'postgres' ? 'PostgreSQL' : 'Демо · SQLite'}
-          </span>
-        </div>
+      <div className="brand">
+        <span className="brand__logo" aria-hidden>
+          Ф
+        </span>
+        <span>
+          <div className="brand__name">Флагман</div>
+          <div className="brand__sub">Склад ресторана</div>
+        </span>
       </div>
       <h1>{SCREEN_TITLES[route.screen]}</h1>
       <div className="topbar__right">
+        <span
+          className="conn"
+          title={
+            (connected ? 'Обновления в реальном времени подключены' : 'Нет связи с сервером, переподключение…') +
+            (summary?.settings.mode === 'postgres' ? ' · PostgreSQL' : ' · демо-режим (SQLite)')
+          }
+        >
+          <i className={`dot ${connected ? 'dot--ok' : 'dot--bad'}`} /> <span>{connected ? 'Онлайн' : 'Нет связи'}</span>
+        </span>
+        <div className="clock" aria-label="Время ресторана">
+          <b>{timeOnly(now, tz)}</b>
+          <small>
+            {weekday(now, tz).toLowerCase()}, {dayOfMonth(now, tz)} · {tz.split('/').pop()?.replace('_', ' ')}
+          </small>
+        </div>
         <button
           className="bell"
           onClick={() => navigate('alerts')}
@@ -68,14 +76,14 @@ export function Readouts() {
     { sq: 'yellow', label: 'Истекает', value: summary.expiringBatches + summary.criticalBatches, go: () => navigate('expiry'), title: 'Партий со сроком в зоне риска' },
     { sq: 'red', label: 'Просрочено', value: summary.expiredBatches, go: () => navigate('expiry'), title: 'Партий с истёкшим сроком на складе' },
     { sq: 'red', label: 'Стоп-лист', value: `${summary.stopListCount}/${summary.dishCount}`, go: () => navigate('stop-list'), title: 'Блюд в стоп-листе' },
-    { sq: 'blue', label: 'Заказов сегодня', value: `${summary.ordersToday} · ✕${summary.rejectedToday}`, go: () => navigate('orders'), title: 'Выполнено · отклонено сегодня' },
+    { sq: 'blue', label: 'Заказов сегодня', value: `${summary.ordersToday} / отказов ${summary.rejectedToday}`, go: () => navigate('orders'), title: 'Выполнено · отклонено сегодня' },
   ];
   return (
     <div className="readouts" aria-label="Сводка склада">
       {items.map((i) => (
         <button key={i.label} onClick={i.go} title={i.title}>
           <span className={`sq sq--${i.sq}`} aria-hidden />
-          {i.label}: <b>{i.value}</b>
+          {i.label} <b>{i.value}</b>
         </button>
       ))}
     </div>
@@ -207,7 +215,7 @@ export function SectionNav() {
   );
 }
 
-const CATEGORY_DOTS = ['#e0504a', '#f0d24a', '#4fbf55', '#57c7e3', '#2b2b2b', '#a06a3a', '#b57be0', '#ff9a3c'];
+
 
 export function CategoryList({ value, onChange, counts }: { value: string; onChange: (c: string) => void; counts?: Record<string, number> }) {
   const { summary } = useLive();
@@ -216,12 +224,10 @@ export function CategoryList({ value, onChange, counts }: { value: string; onCha
     <>
       <h3>Категории</h3>
       <button className={`side-btn ${value === '' ? 'is-active' : ''}`} onClick={() => onChange('')}>
-        <i className="dot" style={{ background: '#fff', boxShadow: '0 0 0 1px #888' }} />
         <span style={{ flex: 1 }}>Все категории</span>
       </button>
-      {cats.map((c, i) => (
+      {cats.map((c) => (
         <button key={c} className={`side-btn ${value === c ? 'is-active' : ''}`} onClick={() => onChange(c)} aria-pressed={value === c}>
-          <i className="dot" style={{ background: CATEGORY_DOTS[i % CATEGORY_DOTS.length] }} />
           <span style={{ flex: 1 }}>{c}</span>
           {counts && <span className="count">{counts[c] ?? 0}</span>}
         </button>

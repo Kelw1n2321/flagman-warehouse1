@@ -58,7 +58,7 @@ export function StopListScreen() {
                         <div style={{ flex: 1 }}>
                           <b style={{ fontSize: 19 }}>{it.name}</b>
                           <div className="row" style={{ gap: 6, marginTop: 3 }}>
-                            <Tag kind="critical">⛔ Недоступно</Tag>
+                            <Tag kind="critical">Недоступно</Tag>
                             {it.since && <span className="ink-muted">с {humanDate(it.since, tz, now)}</span>}
                           </div>
                         </div>
@@ -81,7 +81,7 @@ export function StopListScreen() {
                               </td>
                               <td className="num">{qty(m.required, m.unit)}</td>
                               <td className="num">{qty(m.available, m.unit)}</td>
-                              <td className="num" style={{ color: '#8c231e', fontWeight: 700 }}>
+                              <td className="num" style={{ color: 'var(--crit)', fontWeight: 700 }}>
                                 {qty(m.shortfall, m.unit)}
                               </td>
                             </tr>

@@ -261,8 +261,8 @@ export function AlertsScreen() {
                   <tbody>
                     {list.map((a) => (
                       <tr key={a.id} className={a.status === 'active' ? (a.severity === 'critical' ? 'row--expired' : a.severity === 'warning' ? 'row--soon' : '') : 'row--muted'}>
-                        <td style={{ fontSize: 22 }}>
-                          <Emoji>{ALERT_ICON[a.type] ?? '⚠️'}</Emoji>
+                        <td className={`risk__icon risk__icon--${a.severity === 'critical' ? 'critical' : a.severity === 'warning' ? 'warning' : 'info'}`} style={{ width: 36 }}>
+                          <Icon name={ALERT_ICON[a.type] ?? 'alert'} />
                         </td>
                         <td>
                           <b>{a.title}</b>

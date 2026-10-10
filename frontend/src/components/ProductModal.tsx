@@ -92,7 +92,7 @@ function ProductModal({ id, onClose }: { id: number; onClose: () => void }) {
                     <div className="ink-muted" style={{ marginTop: 6 }}>
                       {RISK_LABEL[d.product.risk]}
                     </div>
-                    {d.product.blockedDishes.length > 0 && <div style={{ marginTop: 6, color: '#8c231e', fontWeight: 700 }}>⛔ {d.product.blockedDishes.join(', ')}</div>}
+                    {d.product.blockedDishes.length > 0 && <div style={{ marginTop: 6, color: 'var(--crit)', fontWeight: 700 }}>Стоп-лист: {d.product.blockedDishes.join(', ')}</div>}
                   </div>
                 </div>
               </div>
@@ -249,7 +249,7 @@ function ProductModal({ id, onClose }: { id: number; onClose: () => void }) {
                         {d.forecast.expectedLoss > 0 && (
                           <>
                             {' '}
-                            Ожидаемые потери по сроку: <b style={{ color: '#8c231e' }}>{qty(d.forecast.expectedLoss, d.product.unit)}</b>.
+                            Ожидаемые потери по сроку: <b style={{ color: 'var(--crit)' }}>{qty(d.forecast.expectedLoss, d.product.unit)}</b>.
                           </>
                         )}
                       </p>
@@ -345,7 +345,7 @@ export function MovementTable({ rows, tz, showProduct }: { rows: Movement[]; tz:
                 <Tag kind={m.quantity > 0 ? 'ok' : m.type === 'consumption' ? 'info' : 'critical'}>{MOVEMENT_LABEL[m.type]}</Tag>
               </td>
               <td>{m.batchCode ?? '—'}</td>
-              <td className="num" style={{ color: m.quantity > 0 ? '#1f6b25' : '#8c231e', fontWeight: 700 }}>
+              <td className="num" style={{ color: m.quantity > 0 ? 'var(--ok)' : 'var(--crit)', fontWeight: 700 }}>
                 {m.quantity > 0 ? '+' : '−'}
                 {qty(Math.abs(m.quantity), m.unit)}
               </td>

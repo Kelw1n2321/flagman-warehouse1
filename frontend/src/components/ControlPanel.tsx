@@ -3,21 +3,23 @@ import { api } from '../api/client';
 import type { Alert, Batch, Product, StopList } from '../api/types';
 import { humanDate, qty, relative } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi } from '../state/store';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { Emoji, EmptyState, Loadable } from './ui';
 
 type Tab = 'risks' | 'expiry' | 'deficit';
 
-export const ALERT_ICON: Record<string, string> = {
-  DishStopped: '⛔',
-  Expired: '☠️',
-  ExpiryCritical: '⏰',
-  ExpiringSoon: '⏳',
-  OutOfStock: '📭',
-  LowStock: '📉',
-  OrderRejected: '🧾',
-  ExpiredWrittenOff: '🗑️',
+export const ALERT_ICON: Record<string, IconName> = {
+  DishStopped: 'stop',
+  Expired: 'alert',
+  ExpiryCritical: 'clock',
+  ExpiringSoon: 'clock',
+  OutOfStock: 'inbox',
+  LowStock: 'box',
+  OrderRejected: 'receipt',
+  ExpiredWrittenOff: 'trash',
 };
+
+const ICON_NAMES = new Set<string>(Object.values(ALERT_ICON));
 
 /** Элемент списка рисков: заголовок раскрывает подробности и доступные действия. */
 export function RiskItem({
@@ -42,8 +44,8 @@ export function RiskItem({
   return (
     <div className={`risk risk--${tone} ${open ? 'is-selected' : ''}`}>
       <button className="risk__head" onClick={onToggle} aria-expanded={actions ? !!open : undefined}>
-        <span className="risk__icon">
-          <Emoji>{icon}</Emoji>
+        <span className={`risk__icon risk__icon--${tone}`}>
+          {ICON_NAMES.has(icon) ? <Icon name={icon as IconName} /> : <Emoji>{icon}</Emoji>}
         </span>
         <span>
           <span className="risk__title">{title}</span>
@@ -142,7 +144,7 @@ function RisksTab({ selected, toggle }: TabProps) {
               <RiskItem
                 key={a.id}
                 tone={toneOf(a)}
-                icon={ALERT_ICON[a.type] ?? '⚠️'}
+                icon={ALERT_ICON[a.type] ?? 'alert'}
                 title={a.title}
                 text={a.message}
                 meta={
@@ -286,7 +288,7 @@ function DeficitTab({ selected, toggle }: TabProps) {
                 icon={p.icon}
                 title={p.name}
                 text={`Доступно ${qty(p.available, p.unit)} при минимуме ${qty(p.minStock, p.unit)}${p.expired > 0 ? ` · просрочено ${qty(p.expired, p.unit)}` : ''}`}
-                meta={p.blockedDishes.length > 0 ? <span>⛔ {p.blockedDishes.join(', ')}</span> : undefined}
+                meta={p.blockedDishes.length > 0 ? <span>Стоп-лист: {p.blockedDishes.join(', ')}</span> : undefined}
                 open={selected === `p${p.id}`}
                 onToggle={() => toggle(`p${p.id}`)}
                 actions={

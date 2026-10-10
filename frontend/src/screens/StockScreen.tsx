@@ -98,17 +98,6 @@ export function StockScreen() {
             </option>
           ))}
         </select>
-        <div className="legend" aria-label="Обозначения счётчиков">
-          <span>
-            <i className="sq sq--red" /> Просрочено / дефицит
-          </span>
-          <span>
-            <i className="sq sq--green" /> Доступно
-          </span>
-          <span>
-            <i className="sq sq--yellow" /> Истекает ≤{soon} ч
-          </span>
-        </div>
         <span className="spacer" />
         <div className="seg" role="group" aria-label="Режим отображения">
           <button className={view === 'products' ? 'is-active' : ''} onClick={() => setView('products')} aria-pressed={view === 'products'}>

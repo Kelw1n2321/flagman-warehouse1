@@ -70,7 +70,7 @@ export function HotScreen() {
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <b className="hot-card__name">{o.name}</b>
                           <span className="row" style={{ gap: 6 }}>
-                            <Tag kind={o.level}>🔥 {LEVEL[o.level]}</Tag>
+                            <Tag kind={o.level}>Приоритет: {LEVEL[o.level].toLowerCase()}</Tag>
                             <span className="hot-card__score" title="Сумма вкладов ингредиентов">
                               {o.score.toLocaleString('ru-RU')} балл.
                             </span>
@@ -116,7 +116,7 @@ export function HotScreen() {
                               <span className="emoji">{b.icon}</span> {b.name}
                             </td>
                             <td>{b.atRiskProducts.join(', ')}</td>
-                            <td style={{ color: '#8c231e', fontWeight: 700 }}>{b.missingProducts.join(', ')}</td>
+                            <td style={{ color: 'var(--crit)', fontWeight: 700 }}>{b.missingProducts.join(', ')}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -158,7 +158,7 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
             <p style={{ margin: 0 }}>{offer.summary}</p>
             {offer.limitingProductName && (
               <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                Количество порций ограничивает: <b style={{ color: '#ddd' }}>{offer.limitingProductName}</b>
+                Количество порций ограничивает: <b style={{ color: 'var(--text)' }}>{offer.limitingProductName}</b>
               </p>
             )}
             {offer.ingredients.map((ing) => (
@@ -169,7 +169,7 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
                   </b>
                   <span className="pill-num">+{ing.contribution.toLocaleString('ru-RU')}</span>
                 </div>
-                <ul style={{ margin: '6px 0', paddingLeft: 18, fontSize: 13, color: '#ccc' }}>
+                <ul style={{ margin: '6px 0', paddingLeft: 18, fontSize: 13, color: 'var(--text-2)' }}>
                   {ing.explanation.map((e, i) => (
                     <li key={i}>{e}</li>
                   ))}
@@ -207,7 +207,7 @@ function Factor({ label, value, hint }: { label: string; value: number; hint: st
   return (
     <div className="factor" title={hint}>
       <span>{label}</span>
-      <Bar value={value} color="#6db3ea" />
+      <Bar value={value} color="var(--primary)" />
       <span className="pill-num">{Math.round(value * 100)}%</span>
       <small>{hint}</small>
     </div>

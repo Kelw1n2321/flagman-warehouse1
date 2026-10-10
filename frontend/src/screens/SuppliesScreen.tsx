@@ -5,7 +5,7 @@ import { ControlPanel } from '../components/ControlPanel';
 import { Icon } from '../components/Icon';
 import { SearchBox, SectionNav, Workspace } from '../components/Shell';
 import { Emoji, EmptyState, ErrorState, Loadable, LoadingBar, Modal, Tag } from '../components/ui';
-import { compact, dateShort, EXPIRY_LABEL, hoursLeft, humanDate, qty, relative, toLocalInput, unitLabel } from '../lib/format';
+import { dateShort, EXPIRY_LABEL, hoursLeft, humanDate, qty, relative, toLocalInput, unitLabel } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi, type SupplyDraftLine } from '../state/store';
 import { matches } from './StockScreen';
 
@@ -303,17 +303,8 @@ function ProductPicker({ search }: { search: string }) {
     <>
       <div className="toolbar">
         <span className="section-title" style={{ margin: 0 }}>
-          Нажмите «+», чтобы добавить партию в поставку
+          Выберите продукты поставки. Один продукт можно добавить несколькими партиями с разными сроками.
         </span>
-        <span className="spacer" />
-        <div className="legend">
-          <span>
-            <i className="sq sq--green" /> Доступно сейчас
-          </span>
-          <span>
-            <i className="sq sq--gray" /> Строк в поставке
-          </span>
-        </div>
       </div>
       <div className="tray">
         <Loadable q={q}>
@@ -325,31 +316,41 @@ function ProductPicker({ search }: { search: string }) {
                 {list.map((p) => {
                   const inDraft = lines.filter((l) => l.productId === p.id).length;
                   return (
-                    <div key={p.id} className="card" style={{ cursor: 'default', minHeight: 104 }}>
-                      <span className="card__counters">
-                        <span className={`counter counter--green ${p.available ? '' : 'is-zero'}`} title={`Доступно: ${qty(p.available, p.unit)}`}>
-                          {compact(p.available)}
+                    <div key={p.id} className="pcard">
+                      <span className="pcard__head">
+                        <span className="pcard__icon">
+                          <Emoji>{p.icon}</Emoji>
                         </span>
-                        <span className={`counter counter--gray ${inDraft ? '' : 'is-zero'}`} title="Строк этого продукта в поставке">
-                          {inDraft}
-                        </span>
-                      </span>
-                      <span className="card__thumb" style={{ minHeight: 86 }}>
-                        <Emoji>{p.icon}</Emoji>
-                      </span>
-                      <span className="card__body">
-                        <span className="card__name">{p.name}</span>
-                        <span className="card__sub">{p.category}</span>
-                        <span className="card__line">Мин. остаток: {qty(p.minStock, p.unit)}</span>
-                        <span className="card__line">Срок хранения: {p.defaultShelfLifeHours ? hoursLeft(p.defaultShelfLifeHours) : '—'}</span>
-                        <span className="card__foot">
-                          <span className="card__big" style={{ fontSize: 20 }}>
-                            {unitLabel(p.unit)}
+                        <span className="pcard__title">
+                          <span className="pcard__name" style={{ display: 'block' }}>
+                            {p.name}
                           </span>
-                          <button className="open-btn" onClick={() => add(p)} aria-label={`Добавить ${p.name} в поставку`} title="Добавить партию">
-                            <Icon name="plus" />
-                          </button>
+                          <span className="pcard__sub" style={{ display: 'block' }}>
+                            {p.category} · {unitLabel(p.unit)}
+                          </span>
                         </span>
+                      </span>
+                      <span className="pcard__rows">
+                        <span className="pcard__row">
+                          <span>Доступно сейчас</span>
+                          <span>{qty(p.available, p.unit)}</span>
+                        </span>
+                        <span className="pcard__row">
+                          <span>Минимальный остаток</span>
+                          <span>{qty(p.minStock, p.unit)}</span>
+                        </span>
+                        <span className="pcard__row">
+                          <span>Срок хранения</span>
+                          <span>{p.defaultShelfLifeHours ? hoursLeft(p.defaultShelfLifeHours) : '—'}</span>
+                        </span>
+                      </span>
+                      <span className="pcard__foot">
+                        <span className="muted" style={{ fontSize: 12.5 }}>
+                          {inDraft ? `В поставке: ${inDraft} парт.` : ''}
+                        </span>
+                        <button className="btn btn--sm btn--blue" onClick={() => add(p)} aria-label={`Добавить ${p.name} в поставку`}>
+                          <Icon name="plus" /> Добавить партию
+                        </button>
                       </span>
                     </div>
                   );
@@ -434,7 +435,7 @@ function SupplyComposer() {
           Номер поставки <span className="hint">пусто — присвоится автоматически</span>
           <input className="input" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="ПСТ-…" maxLength={40} />
         </label>
-        {lines.length === 0 && <EmptyState dark icon="🧺" title="Поставка пуста" text="Добавьте продукты кнопкой «+» в каталоге. Один продукт можно добавить несколько раз — с разными сроками годности." />}
+        {lines.length === 0 && <EmptyState icon="📋" title="Поставка пуста" text="Добавьте продукты из каталога. Один продукт можно добавить несколько раз — с разными сроками годности." />}
         {lines.map((l, i) => {
           const p = byId.get(l.productId);
           const hrs = l.expiresLocal ? (Date.parse(l.expiresLocal + 'Z') - Date.parse(nowLocal + 'Z')) / 3_600_000 : NaN;
