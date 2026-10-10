@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
-// Палитра графиков (validate_palette.js: пары primary/secondary и primary/rejected проходят CVD и контраст).
+// Цвета графиков берутся из темы; обе палитры (светлая и тёмная) проверены validate_palette.js на CVD и контраст.
 export const SERIES = {
-  primary: '#2a6ea8',
-  secondary: '#c86a1e',
-  rejected: '#c0392b',
-  grid: 'rgba(0,0,0,0.12)',
-  axis: '#555',
+  primary: 'var(--chart-1)',
+  secondary: 'var(--chart-2)',
+  rejected: 'var(--chart-3)',
+  grid: 'var(--chart-grid)',
+  axis: 'var(--chart-axis)',
 };
 
 interface LinePoint {
@@ -59,33 +59,33 @@ export function LineChart({
       >
         {ticks.map((t, i) => (
           <g key={i}>
-            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke={SERIES.grid} />
-            <text x={pad.l - 6} y={y(t) + 4} fontSize="11" textAnchor="end" fill={SERIES.axis}>
+            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} style={{ stroke: SERIES.grid }} />
+            <text x={pad.l - 6} y={y(t) + 4} fontSize="11" textAnchor="end" style={{ fill: SERIES.axis }}>
               {format(t)}
             </text>
           </g>
         ))}
         {points.map((p, i) =>
           i % step === 0 ? (
-            <text key={i} x={x(i)} y={H - 6} fontSize="11" textAnchor="middle" fill={SERIES.axis}>
+            <text key={i} x={x(i)} y={H - 6} fontSize="11" textAnchor="middle" style={{ fill: SERIES.axis }}>
               {p.label}
             </text>
           ) : null,
         )}
         {threshold !== undefined && threshold > 0 && (
           <g>
-            <line x1={pad.l} x2={W - pad.r} y1={y(threshold)} y2={y(threshold)} stroke="#b3302a" strokeDasharray="5 4" strokeWidth={1.5} />
-            <text x={W - pad.r} y={y(threshold) - 4} fontSize="11" textAnchor="end" fill="#8c231e">
+            <line x1={pad.l} x2={W - pad.r} y1={y(threshold)} y2={y(threshold)} style={{ stroke: 'var(--crit)' }} strokeDasharray="5 4" strokeWidth={1.5} />
+            <text x={W - pad.r} y={y(threshold) - 4} fontSize="11" textAnchor="end" style={{ fill: 'var(--crit)' }}>
               {thresholdLabel}
             </text>
           </g>
         )}
-        <path d={area} fill={SERIES.primary} opacity={0.14} />
-        <path d={path} fill="none" stroke={SERIES.primary} strokeWidth={2} />
+        <path d={area} style={{ fill: SERIES.primary }} opacity={0.16} />
+        <path d={path} fill="none" style={{ stroke: SERIES.primary }} strokeWidth={2} />
         {hover !== null && (
           <g>
-            <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={H - pad.b} stroke="#333" strokeDasharray="3 3" />
-            <circle cx={x(hover)} cy={y(points[hover].value)} r={5} fill={SERIES.primary} stroke="#fff" strokeWidth={2} />
+            <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={H - pad.b} style={{ stroke: 'var(--text-3)' }} strokeDasharray="3 3" />
+            <circle cx={x(hover)} cy={y(points[hover].value)} r={5} style={{ fill: SERIES.primary, stroke: 'var(--surface)' }} strokeWidth={2} />
           </g>
         )}
       </svg>
@@ -143,8 +143,8 @@ export function BarChart<T extends { date: string }>({
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel} onMouseLeave={() => setHover(null)}>
         {ticks.map((t, i) => (
           <g key={i}>
-            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke={SERIES.grid} />
-            <text x={pad.l - 6} y={y(t) + 4} fontSize="11" textAnchor="end" fill={SERIES.axis}>
+            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} style={{ stroke: SERIES.grid }} />
+            <text x={pad.l - 6} y={y(t) + 4} fontSize="11" textAnchor="end" style={{ fill: SERIES.axis }}>
               {t}
             </text>
           </g>
@@ -153,7 +153,7 @@ export function BarChart<T extends { date: string }>({
           const x0 = pad.l + i * band + (band - series.length * (bw + gap)) / 2;
           return (
             <g key={d.date} onMouseEnter={() => setHover(i)}>
-              <rect x={pad.l + i * band} y={pad.t} width={band} height={H - pad.t - pad.b} fill={hover === i ? 'rgba(0,0,0,0.05)' : 'transparent'} />
+              <rect x={pad.l + i * band} y={pad.t} width={band} height={H - pad.t - pad.b} style={{ fill: hover === i ? 'var(--surface-3)' : 'transparent' }} />
               {series.map((s, j) => {
                 const v = val(d, s.key);
                 const top = y(v);
@@ -162,12 +162,12 @@ export function BarChart<T extends { date: string }>({
                   <path
                     key={s.key}
                     d={`M${x0 + j * (bw + gap)},${y(0)} v${-Math.max(0, h - 3)} q0,-3 3,-3 h${bw - 6} q3,0 3,3 v${Math.max(0, h - 3)} z`}
-                    fill={s.color}
+                    style={{ fill: s.color }}
                   />
                 ) : null;
               })}
               {i % step === 0 && (
-                <text x={pad.l + i * band + band / 2} y={H - 6} fontSize="11" textAnchor="middle" fill={SERIES.axis}>
+                <text x={pad.l + i * band + band / 2} y={H - 6} fontSize="11" textAnchor="middle" style={{ fill: SERIES.axis }}>
                   {label(d.date)}
                 </text>
               )}

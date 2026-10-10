@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
+    <script>
+      // Тема до первой отрисовки, чтобы не было вспышки светлого фона.
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem('flagman.theme'); } catch (e) {}
+        var dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
     <title>Флагман · Склад ресторана</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='10' fill='%230a78c2'/><text x='32' y='46' font-size='40' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>Ф</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

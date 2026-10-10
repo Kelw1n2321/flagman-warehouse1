@@ -72,17 +72,17 @@ export function ProductCard({
           <span className="pcard__sub" style={{ display: 'block' }}>
             {p.category} · {p.sku}
           </span>
+          <StatusPill tier={tier}>{statusText}</StatusPill>
         </span>
-        <StatusPill tier={tier}>{statusText}</StatusPill>
       </span>
 
       <span className="pcard__metrics">
-        <Metric label={`Доступно, ${u}`} value={compact(p.available)} tone={p.belowMinimum ? 'warn' : 'ok'} zero={p.available === 0} title={`Доступно: ${qty(p.available, p.unit)}`} />
-        <Metric label={`Истекает ≤${soonHours} ч`} value={compact(atRisk)} tone="warn" zero={atRisk === 0} title={`Истекает в ближайшие ${soonHours} ч: ${qty(atRisk, p.unit)}`} />
+        <Metric label="Доступно" value={`${compact(p.available)} ${u}`} tone={p.belowMinimum ? 'warn' : 'ok'} zero={p.available === 0} title={`Доступно: ${qty(p.available, p.unit)}`} />
+        <Metric label="Истекает" value={`${compact(atRisk)} ${u}`} tone="warn" zero={atRisk === 0} title={`Истекает в ближайшие ${soonHours} ч: ${qty(atRisk, p.unit)}`} />
         {p.expired > 0 || !p.belowMinimum ? (
-          <Metric label="Просрочено" value={compact(p.expired)} tone="crit" zero={p.expired === 0} title={`Просрочено, не используется: ${qty(p.expired, p.unit)}`} />
+          <Metric label="Просрочка" value={`${compact(p.expired)} ${u}`} tone="crit" zero={p.expired === 0} title={`Просрочено, не используется: ${qty(p.expired, p.unit)}`} />
         ) : (
-          <Metric label="До минимума" value={`−${compact(deficit)}`} tone="crit" title={`Не хватает до минимального остатка ${qty(p.minStock, p.unit)}`} />
+          <Metric label="Нехватка" value={`${compact(deficit)} ${u}`} tone="crit" title={`Не хватает до минимального остатка ${qty(p.minStock, p.unit)}`} />
         )}
       </span>
 
@@ -124,13 +124,13 @@ export function BatchCard({ b, tz, now, onOpen }: { b: Batch; tz: string; now: D
           <span className="pcard__sub" style={{ display: 'block' }}>
             Партия {b.code}
           </span>
+          <StatusPill tier={EXPIRY_TIER[b.expiry]}>{EXPIRY_LABEL[b.expiry]}</StatusPill>
         </span>
-        <StatusPill tier={EXPIRY_TIER[b.expiry]}>{EXPIRY_LABEL[b.expiry]}</StatusPill>
       </span>
       <span className="pcard__metrics">
-        <Metric label={`Остаток, ${unitLabel(b.unit)}`} value={compact(b.quantityRemaining)} tone={expired ? 'crit' : 'ok'} />
-        <Metric label={expired ? 'Истёк' : 'До конца срока'} value={relative(b.hoursLeft).replace('через ', '')} tone={b.expiry === 'normal' ? 'neutral' : b.expiry === 'soon' ? 'warn' : 'crit'} />
-        <Metric label="Очередь FEFO" value={b.fefoRank ? `№${b.fefoRank}` : '—'} tone="neutral" zero={!b.fefoRank} />
+        <Metric label="Остаток" value={`${compact(b.quantityRemaining)} ${unitLabel(b.unit)}`} tone={expired ? 'crit' : 'ok'} />
+        <Metric label={expired ? 'Истёк' : 'Осталось'} value={relative(b.hoursLeft).replace('через ', '')} tone={b.expiry === 'normal' ? 'neutral' : b.expiry === 'soon' ? 'warn' : 'crit'} />
+        <Metric label="FEFO" value={b.fefoRank ? `№${b.fefoRank}` : '—'} tone="neutral" zero={!b.fefoRank} />
       </span>
       <span className="pcard__rows">
         <Row label="Поставка">{b.supplyNumber}</Row>

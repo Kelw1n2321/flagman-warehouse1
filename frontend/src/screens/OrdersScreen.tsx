@@ -129,13 +129,13 @@ export function DishCard({ d, inOrder, onAdd, onOpen }: { d: Dish; inOrder?: num
           <span className="pcard__sub" style={{ display: 'block' }}>
             {d.category} · {d.ingredients.length} ингр.
           </span>
+          <StatusPill tier={tier}>{!d.available ? 'Стоп-лист' : d.hotLevel ? 'Продвигать' : 'Доступно'}</StatusPill>
         </span>
-        <StatusPill tier={tier}>{!d.available ? 'Стоп-лист' : d.hotLevel ? 'Продвигать' : 'Доступно'}</StatusPill>
       </span>
       <span className="pcard__metrics">
-        <Metric label="Можно порций" value={d.maxServings} tone={d.maxServings ? 'ok' : 'crit'} />
+        <Metric label="Порций" value={d.maxServings} tone={d.maxServings ? 'ok' : 'crit'} />
         <Metric label="Не хватает" value={missing.length} tone="crit" zero={!missing.length} title={missing.length ? `Не хватает: ${missing.map((m) => m.name).join(', ')}` : 'Все ингредиенты в наличии'} />
-        <Metric label="Истекает срок" value={risky} tone="warn" zero={!risky} title="Ингредиентов с истекающим сроком" />
+        <Metric label="Истекает" value={risky} tone="warn" zero={!risky} title="Ингредиентов с истекающим сроком" />
       </span>
       <span className="pcard__rows">
         {d.available ? (

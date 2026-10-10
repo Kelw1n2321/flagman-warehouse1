@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { dayOfMonth, timeOnly, weekday } from '../lib/format';
 import { useClock, useLive, useTz, useUi, type Screen } from '../state/store';
+import { useTheme } from '../lib/theme';
 import { Icon, type IconName } from './Icon';
 
 export const SCREEN_TITLES: Record<Screen, string> = {
@@ -23,6 +24,8 @@ export function TopBar() {
   const tz = useTz();
   const now = useClock();
   const alerts = summary?.activeAlerts ?? 0;
+  const [theme, cycleTheme] = useTheme();
+  const themeLabel = theme === 'system' ? 'Тема: как в системе' : theme === 'light' ? 'Тема: светлая' : 'Тема: тёмная';
 
   return (
     <header className="topbar">
@@ -52,6 +55,9 @@ export function TopBar() {
             {weekday(now, tz).toLowerCase()}, {dayOfMonth(now, tz)} · {tz.split('/').pop()?.replace('_', ' ')}
           </small>
         </div>
+        <button className="bell" onClick={cycleTheme} aria-label={`${themeLabel}. Нажмите, чтобы переключить`} title={`${themeLabel} — нажмите, чтобы переключить`}>
+          <Icon name={theme === 'system' ? 'monitor' : theme === 'light' ? 'sun' : 'moon'} />
+        </button>
         <button
           className="bell"
           onClick={() => navigate('alerts')}

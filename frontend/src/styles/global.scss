@@ -24,6 +24,22 @@
   --crit-soft: #fdebec;
   --info: #4f5a6b;
   --info-soft: #eef1f5;
+  --ok-mark: #22a05a;
+  --ok-hover: #186a3a;
+  --crit-border: #efc4c6;
+  --row-expired: #fff6f6;
+  --row-critical: #fff8f2;
+  --row-soon: #fffbf2;
+  --orange-mark: #e8672a;
+  --on-primary: #ffffff;
+  --tip-bg: #1b2230;
+  --tip-text: #ffffff;
+  --overlay: rgba(16, 24, 40, 0.45);
+  --chart-1: #2a6ea8;
+  --chart-2: #c86a1e;
+  --chart-3: #c0392b;
+  --chart-grid: rgba(0, 0, 0, 0.1);
+  --chart-axis: #5b6474;
 
   --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --emoji: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
@@ -99,6 +115,61 @@ h3 {
   scrollbar-color: var(--border-strong) transparent;
 }
 
+
+// ═════════════════════ Тёмная тема ═════════════════════
+// Те же роли, свои значения: поверхности темнеют ступенями, статусные цвета светлеют для контраста.
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1318;
+  --surface: #171c23;
+  --surface-2: #1c222a;
+  --surface-3: #242b34;
+  --border: #2a323c;
+  --border-strong: #3a4450;
+  --text: #e6e9ee;
+  --text-2: #b0b8c4;
+  --text-3: #7e8896;
+
+  --primary: #3d9be0;
+  --primary-hover: #5aaeea;
+  --primary-soft: rgba(61, 155, 224, 0.16);
+  --primary-ink: #84c4f3;
+
+  --ok: #56c486;
+  --ok-soft: rgba(86, 196, 134, 0.14);
+  --warn: #e9b65a;
+  --warn-mark: #e3a432;
+  --warn-soft: rgba(227, 164, 50, 0.15);
+  --crit: #f07075;
+  --crit-soft: rgba(240, 112, 117, 0.15);
+  --info: #b0b8c4;
+  --info-soft: #242b34;
+  --ok-mark: #3fbf74;
+  --ok-hover: #2f9d5d;
+  --crit-border: rgba(240, 112, 117, 0.45);
+  --row-expired: rgba(240, 112, 117, 0.08);
+  --row-critical: rgba(232, 103, 42, 0.08);
+  --row-soon: rgba(227, 164, 50, 0.07);
+  --orange-mark: #ef8148;
+  --on-primary: #ffffff;
+  --tip-bg: #e6e9ee;
+  --tip-text: #171c23;
+  --overlay: rgba(0, 0, 0, 0.6);
+  --chart-1: #3a8ed4;
+  --chart-2: #cf7a2c;
+  --chart-3: #dc5752;
+  --chart-grid: rgba(255, 255, 255, 0.1);
+  --chart-axis: #9aa3b0;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+
+  .btn--green {
+    color: #0f1318;
+  }
+}
+
 // ═════════════════════ Каркас ═════════════════════
 .frame {
   height: 100%;
@@ -159,7 +230,7 @@ h3 {
     height: 32px;
     border-radius: 8px;
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary);
     display: grid;
     place-items: center;
     font-weight: 700;
@@ -211,7 +282,7 @@ h3 {
   display: inline-block;
   flex: none;
   &--ok {
-    background: #22a05a;
+    background: var(--ok-mark);
   }
   &--bad {
     background: var(--crit);
@@ -248,7 +319,7 @@ h3 {
     border-radius: 10px;
     background: var(--crit);
     border: 2px solid var(--surface);
-    color: #fff;
+    color: var(--on-primary);
     font-weight: 600;
     display: grid;
     place-items: center;
@@ -351,7 +422,7 @@ h3 {
     background: var(--crit);
   }
   &--green {
-    background: #22a05a;
+    background: var(--ok-mark);
   }
   &--yellow {
     background: var(--warn-mark);
@@ -576,7 +647,7 @@ textarea.input {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(236px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
   gap: 12px;
   align-content: start;
 }
@@ -636,14 +707,18 @@ textarea.input {
   &__title {
     flex: 1;
     min-width: 0;
+    .status {
+      margin-top: 5px;
+    }
   }
   &__name {
     font-weight: 600;
     font-size: 15px;
     line-height: 1.25;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
   &__sub {
     font-size: 12.5px;
@@ -698,7 +773,7 @@ textarea.input {
 
 .metric {
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 6px 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   min-width: 0;
@@ -706,7 +781,7 @@ textarea.input {
   &__value {
     display: block;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     overflow: hidden;
@@ -714,7 +789,7 @@ textarea.input {
   }
   &__label {
     display: block;
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--text-3);
     white-space: nowrap;
     overflow: hidden;
@@ -817,10 +892,10 @@ textarea.input {
   &--primary {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary);
     &:hover {
       background: var(--primary-hover);
-      color: #fff;
+      color: var(--on-primary);
     }
   }
 }
@@ -859,7 +934,7 @@ textarea.input {
   &--blue {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary);
     &:hover:not(:disabled) {
       background: var(--primary-hover);
     }
@@ -867,14 +942,14 @@ textarea.input {
   &--green {
     background: var(--ok);
     border-color: var(--ok);
-    color: #fff;
+    color: var(--on-primary);
     &:hover:not(:disabled) {
-      background: #186a3a;
+      background: var(--ok-hover);
     }
   }
   &--red {
     background: var(--surface);
-    border-color: #efc4c6;
+    border-color: var(--crit-border);
     color: var(--crit);
     &:hover:not(:disabled) {
       background: var(--crit-soft);
@@ -999,7 +1074,7 @@ textarea.input {
     border-left-color: var(--primary);
   }
   &--ok {
-    border-left-color: #22a05a;
+    border-left-color: var(--ok-mark);
   }
 
   &__head {
@@ -1148,19 +1223,19 @@ table.table {
     background: var(--surface-2);
   }
   tr.row--expired td {
-    background: #fff6f6;
+    background: var(--row-expired);
   }
   tr.row--critical td {
-    background: #fff8f2;
+    background: var(--row-critical);
   }
   tr.row--soon td {
-    background: #fffbf2;
+    background: var(--row-soon);
   }
   tr.row--expired td:first-child {
     box-shadow: inset 3px 0 0 var(--crit);
   }
   tr.row--critical td:first-child {
-    box-shadow: inset 3px 0 0 #e8672a;
+    box-shadow: inset 3px 0 0 var(--orange-mark);
   }
   tr.row--soon td:first-child {
     box-shadow: inset 3px 0 0 var(--warn-mark);
@@ -1299,7 +1374,7 @@ table.table {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(16, 24, 40, 0.45);
+  background: var(--overlay);
   display: grid;
   place-items: center;
   padding: 18px;
@@ -1411,7 +1486,7 @@ table.table {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 4px solid #22a05a;
+  border-left: 4px solid var(--ok-mark);
   box-shadow: var(--shadow-lg);
   font-size: 13.5px;
   animation: pop 0.15s ease-out;
@@ -1471,8 +1546,8 @@ table.table {
   position: absolute;
   top: 6px;
   transform: translateX(-50%);
-  background: #1b2230;
-  color: #fff;
+  background: var(--tip-bg);
+  color: var(--tip-text);
   border-radius: 6px;
   padding: 6px 9px;
   font-size: 12px;
@@ -1708,7 +1783,7 @@ table.table {
   position: fixed;
   inset: 0;
   z-index: 35;
-  background: rgba(16, 24, 40, 0.4);
+  background: var(--overlay);
 }
 
 // ═════════════════════ Адаптивность ═════════════════════
@@ -1841,7 +1916,7 @@ table.table {
       font-size: 10px;
       padding: 0 4px;
       background: var(--crit);
-      color: #fff;
+      color: var(--on-primary);
     }
   }
   .navbtn__full {
@@ -1887,6 +1962,6 @@ table.table {
     color: var(--primary);
   }
   &--ok {
-    color: #22a05a;
+    color: var(--ok-mark);
   }
 }
