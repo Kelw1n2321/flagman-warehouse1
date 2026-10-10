@@ -1,0 +1,17 @@
+# Render Blueprint: Dashboard → New → Blueprint → выбрать этот репозиторий.
+services:
+  - type: web
+    name: flagman-warehouse
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/summary
+    autoDeploy: true
+    envVars:
+      # Демо-режим: SQLite внутри контейнера, при каждом запуске база заполняется свежей демо-историей.
+      - key: Database__Provider
+        value: sqlite
+      - key: Demo__SeedOnStart
+        value: "true"
+      - key: Demo__AllowReset
+        value: "true"

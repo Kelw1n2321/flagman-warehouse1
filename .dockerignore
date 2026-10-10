@@ -1,0 +1,9 @@
+.tools
+.git
+**/node_modules
+**/bin
+**/obj
+**/App_Data
+backend/Flagman.Api/wwwroot
+backend/Flagman.Tests
+*.log

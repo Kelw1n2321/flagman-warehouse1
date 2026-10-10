@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Flagman.Api/Flagman.Api.csproj" />
+  <Project Path="Flagman.Tests/Flagman.Tests.csproj" />
+</Solution>
