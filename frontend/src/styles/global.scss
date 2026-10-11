@@ -353,10 +353,10 @@ h3 {
   white-space: nowrap;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  --icon-h: 17px;
 
   svg {
-    width: 17px;
-    height: 17px;
+    height: var(--icon-h);
     flex: none;
   }
   &:hover {
@@ -395,7 +395,7 @@ h3 {
     gap: 8px;
     padding: 6px 12px;
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: 5px; // ≈15% высоты плитки
     background: var(--surface);
     color: var(--text-2);
     font-size: 13px;
@@ -1900,10 +1900,7 @@ table.table {
     border-bottom: none;
     border-top: 2px solid transparent;
     margin: 0;
-    svg {
-      width: 20px;
-      height: 20px;
-    }
+    --icon-h: 20px;
     &.is-active {
       border-top-color: var(--primary);
     }
@@ -1964,4 +1961,16 @@ table.table {
   &--ok {
     color: var(--ok-mark);
   }
+}
+
+// Технический идентификатор под человекочитаемым номером: мелко и бледно, но копируется целиком.
+.uid {
+  display: block;
+  margin-top: 2px;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-3);
+  white-space: nowrap;
+  user-select: all;
 }

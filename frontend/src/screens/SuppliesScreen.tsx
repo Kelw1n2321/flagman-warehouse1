@@ -115,6 +115,9 @@ function SupplyList({ search, status }: { search: string; status: string }) {
                       <tr key={s.id} className="is-clickable" onClick={() => navigate('supplies', s.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate('supplies', s.id)}>
                         <td>
                           <b>{s.supplyNumber}</b>
+                          <span className="uid" title="Уникальный идентификатор поставки">
+                            {s.id}
+                          </span>
                         </td>
                         <td>{s.supplier}</td>
                         <td style={{ whiteSpace: 'nowrap' }}>{dateShort(s.createdAt, tz)}</td>
@@ -179,10 +182,13 @@ function SupplyDetail({ id, onClose }: { id: string; onClose: () => void }) {
           <>
             <div className="sheet">
               <dl className="kv">
-                <dt>Идентификатор</dt>
-                <dd style={{ fontFamily: 'monospace', fontSize: 12 }}>{d.id}</dd>
                 <dt>Номер</dt>
-                <dd>{d.supplyNumber}</dd>
+                <dd>
+                  {d.supplyNumber}
+                  <span className="uid" title="Уникальный идентификатор поставки">
+                    {d.id}
+                  </span>
+                </dd>
                 <dt>Поставщик</dt>
                 <dd>{d.supplier}</dd>
                 <dt>Создана</dt>

@@ -118,7 +118,7 @@ export function BottomNav() {
           onClick={() => navigate(n.screen)}
           aria-current={route.screen === n.screen ? 'page' : undefined}
         >
-          <Icon name={n.icon} />
+          <Icon name={n.icon} tight />
           <span className="navbtn__full">{n.label}</span>
           <span className="navbtn__short">{n.short}</span>
           {badge(n.screen) > 0 && <span className="badge">{badge(n.screen)}</span>}

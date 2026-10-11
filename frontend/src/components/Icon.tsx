@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef, useState } from 'react';
+
 // Единый набор контурных иконок (толщина 2.2, скруглённые концы), чтобы статусы и навигация выглядели одинаково.
 const PATHS = {
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
@@ -32,21 +34,39 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
-export function Icon({ name, title, className }: { name: IconName; title?: string; className?: string }) {
+const STROKE = 2.2;
+
+/**
+ * @param tight — подрезать пустые поля по ширине до фактического рисунка. Нужен там, где иконка стоит
+ *   в ряду с текстом и важны одинаковые видимые промежутки (навигация): у разных иконок поля разные.
+ */
+export function Icon({ name, title, className, tight }: { name: IconName; title?: string; className?: string; tight?: boolean }) {
+  const pathRef = useRef<SVGPathElement>(null);
+  const [box, setBox] = useState<{ x: number; w: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!tight || !pathRef.current) return;
+    const b = pathRef.current.getBBox();
+    setBox({ x: b.x - STROKE / 2, w: b.width + STROKE });
+  }, [tight, name]);
+
+  const viewBox = tight && box ? `${box.x} 0 ${box.w} 24` : '0 0 24 24';
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox={viewBox}
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.2}
+      strokeWidth={STROKE}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      // При подрезке ширина пропорциональна видимой части рисунка, высота задаётся стилями.
+      style={tight && box ? { width: `calc(var(--icon-h, 17px) * ${box.w / 24})` } : undefined}
       aria-hidden={title ? undefined : true}
       role={title ? 'img' : undefined}
     >
       {title && <title>{title}</title>}
-      <path d={PATHS[name]} />
+      <path ref={pathRef} d={PATHS[name]} />
     </svg>
   );
 }
