@@ -46,16 +46,17 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f2f3f6;
-  --nav-bg: #ffffff;
-  --surface: #ffffff;
-  --surface-2: #f6f7f9;
-  --surface-3: #eceef2;
-  --border: #e3e5ea;
-  --border-strong: #d2d5dc;
+  // Не чисто белая: фон и поверхности — светло-серые ступени, чтобы экран не слепил.
+  --bg: #e4e6ea;
+  --nav-bg: #eceef1;
+  --surface: #f3f4f6;
+  --surface-2: #e9ebef;
+  --surface-3: #dfe2e7;
+  --border: #d4d8de;
+  --border-strong: #c1c6ce;
   --text: #121419;
   --text-2: #545a66;
-  --text-3: #8a909b;
+  --text-3: #6f7580;
 
   --primary: #2a6fe0;
   --primary-hover: #1f5fc9;

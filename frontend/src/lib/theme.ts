@@ -17,7 +17,7 @@ function read(): ThemeChoice {
 function apply(choice: ThemeChoice) {
   const dark = choice === 'dark' || (choice === 'system' && media().matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#171c23' : '#ffffff');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#151518' : '#eceef1');
 }
 
 /** Тема интерфейса: тёмная (по умолчанию), светлая или «как в системе». Выбор хранится в браузере. */
