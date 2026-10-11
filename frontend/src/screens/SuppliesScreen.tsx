@@ -94,7 +94,7 @@ function SupplyList({ search, status }: { search: string; status: string }) {
                 (!search.trim() ||
                   [s.supplyNumber, s.supplier, ...s.productNames].some((x) => x.toLowerCase().includes(search.trim().toLowerCase()))),
             );
-            if (list.length === 0) return <EmptyState icon="🚚" title="Поставок не найдено" text="Измените поиск или фильтр статуса." />;
+            if (list.length === 0) return <EmptyState icon="truck" title="Поставок не найдено" text="Измените поиск или фильтр статуса." />;
             return (
               <div className="table-wrap">
                 <table className="table">
@@ -162,7 +162,7 @@ function SupplyDetail({ id, onClose }: { id: string; onClose: () => void }) {
   return (
     <Modal
       title={s ? `Поставка ${s.supplyNumber}` : 'Поставка'}
-      icon="🚚"
+      icon="truck"
       onClose={onClose}
       footer={
         s?.status === 'draft' && (
@@ -316,7 +316,7 @@ function ProductPicker({ search }: { search: string }) {
         <Loadable q={q}>
           {(all) => {
             const list = all.filter((p) => matches(p, search));
-            if (list.length === 0) return <EmptyState icon="🔍" title="Продукт не найден" />;
+            if (list.length === 0) return <EmptyState icon="search" title="Продукт не найден" />;
             return (
               <div className="grid">
                 {list.map((p) => {
@@ -441,7 +441,7 @@ function SupplyComposer() {
           Номер поставки <span className="hint">пусто — присвоится автоматически</span>
           <input className="input" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="ПСТ-…" maxLength={40} />
         </label>
-        {lines.length === 0 && <EmptyState icon="📋" title="Поставка пуста" text="Добавьте продукты из каталога. Один продукт можно добавить несколько раз — с разными сроками годности." />}
+        {lines.length === 0 && <EmptyState icon="list" title="Поставка пуста" text="Добавьте продукты из каталога. Один продукт можно добавить несколько раз — с разными сроками годности." />}
         {lines.map((l, i) => {
           const p = byId.get(l.productId);
           const hrs = l.expiresLocal ? (Date.parse(l.expiresLocal + 'Z') - Date.parse(nowLocal + 'Z')) / 3_600_000 : NaN;
@@ -518,7 +518,7 @@ function Recommendations() {
         ) : (
           <Loadable q={q}>
             {(list) => {
-              if (list.length === 0) return <EmptyState icon="✅" title="Пополнение не требуется" text="Запасов хватает на расчётный период с учётом сроков годности." />;
+              if (list.length === 0) return <EmptyState icon="check" title="Пополнение не требуется" text="Запасов хватает на расчётный период с учётом сроков годности." />;
               const sel = picked ?? new Set(list.map((r) => r.productId));
               return (
                 <div className="table-wrap">

@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 const modalStack: number[] = [];
 let modalSeq = 0;
 import { useUi } from '../state/store';
-import { Icon } from './Icon';
+import { Icon, isIconName } from './Icon';
 
 export function Emoji({ children, label }: { children: string; label?: string }) {
   return (
@@ -58,11 +58,7 @@ export function Modal({
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${size ? `modal--${size}` : ''}`} role="dialog" aria-modal="true" tabIndex={-1} ref={ref}>
         <div className="modal__head">
-          {icon && (
-            <span style={{ fontSize: 34 }}>
-              <Emoji>{icon}</Emoji>
-            </span>
-          )}
+          {icon && <span className="modal__icon">{isIconName(icon) ? <Icon name={icon} /> : <Emoji>{icon}</Emoji>}</span>}
           <h2>{title}</h2>
           <button className="close-x" onClick={onClose} aria-label="Закрыть">
             <Icon name="x" />
@@ -115,10 +111,10 @@ export function Toasts() {
   );
 }
 
-export function EmptyState({ icon = '📭', title, text, dark, action }: { icon?: string; title: string; text?: string; dark?: boolean; action?: ReactNode }) {
+export function EmptyState({ icon = 'inbox', title, text, dark, action }: { icon?: string; title: string; text?: string; dark?: boolean; action?: ReactNode }) {
   return (
     <div className={`state ${dark ? 'state--dark' : ''}`}>
-      <Emoji>{icon}</Emoji>
+      <span className="state__icon">{isIconName(icon) ? <Icon name={icon} /> : <Emoji>{icon}</Emoji>}</span>
       <b>{title}</b>
       {text && <span>{text}</span>}
       {action}
@@ -129,7 +125,9 @@ export function EmptyState({ icon = '📭', title, text, dark, action }: { icon?
 export function ErrorState({ text, onRetry, dark }: { text: string; onRetry?: () => void; dark?: boolean }) {
   return (
     <div className={`state ${dark ? 'state--dark' : ''}`} role="alert">
-      <Emoji>⚠️</Emoji>
+      <span className="state__icon state__icon--error">
+        <Icon name="alert" />
+      </span>
       <b>Не удалось загрузить</b>
       <span>{text}</span>
       {onRetry && (
@@ -169,7 +167,7 @@ export function Loadable<T>({
 }) {
   if (q.data !== undefined) return <>{children(q.data)}</>;
   if (q.error) return <ErrorState text={q.error} onRetry={q.reload} dark={dark} />;
-  return <>{skeleton ?? <EmptyState icon="⏳" title="Загрузка…" dark={dark} />}</>;
+  return <>{skeleton ?? <EmptyState icon="clock" title="Загрузка…" dark={dark} />}</>;
 }
 
 export function Bar({ value, color }: { value: number; color?: string }) {

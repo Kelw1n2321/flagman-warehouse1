@@ -41,11 +41,12 @@
   --chart-grid: rgba(0, 0, 0, 0.1);
   --chart-axis: #5b6474;
 
-  --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   --emoji: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 
-  --radius: 8px;
-  --radius-lg: 12px;
+  --radius: 4px;
+  --radius-lg: 6px;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
   --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
   --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.18);
@@ -270,7 +271,7 @@ h3 {
   font-weight: 500;
   color: var(--text-2);
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--surface-3);
   white-space: nowrap;
 }
@@ -316,7 +317,7 @@ h3 {
     min-width: 20px;
     height: 20px;
     padding: 0 5px;
-    border-radius: 10px;
+    border-radius: 4px;
     background: var(--crit);
     border: 2px solid var(--surface);
     color: var(--on-primary);
@@ -370,7 +371,7 @@ h3 {
   .badge {
     background: var(--crit-soft);
     color: var(--crit);
-    border-radius: 999px;
+    border-radius: 3px;
     min-width: 20px;
     height: 20px;
     font-size: 11px;
@@ -628,7 +629,7 @@ textarea.input {
     &.is-active {
       background: var(--surface);
       color: var(--text);
-      box-shadow: var(--shadow-sm);
+      box-shadow: inset 0 0 0 1px var(--border-strong);
     }
   }
 }
@@ -656,24 +657,22 @@ textarea.input {
 .pcard {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  text-align: left;
+    text-align: left;
   color: var(--text);
   width: 100%;
   min-width: 0;
-  transition: box-shadow 0.12s, border-color 0.12s;
+  transition: border-color 0.12s;
 
   &--clickable {
     cursor: pointer;
     &:hover {
       border-color: var(--border-strong);
-      box-shadow: var(--shadow);
-    }
+          }
   }
   &.is-selected {
     border-color: var(--primary);
@@ -697,7 +696,7 @@ textarea.input {
   &__icon {
     width: 40px;
     height: 40px;
-    border-radius: 10px;
+    border-radius: 4px;
     background: var(--surface-3);
     display: grid;
     place-items: center;
@@ -832,7 +831,7 @@ textarea.input {
   font-size: 11.5px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 3px;
   white-space: nowrap;
   flex: none;
   svg {
@@ -917,8 +916,7 @@ textarea.input {
   white-space: nowrap;
   line-height: 1.2;
   text-decoration: none;
-  box-shadow: var(--shadow-sm);
-
+  
   svg {
     width: 16px;
     height: 16px;
@@ -1048,7 +1046,7 @@ textarea.input {
     &.is-active {
       background: var(--surface);
       color: var(--text);
-      box-shadow: var(--shadow-sm);
+      box-shadow: inset 0 0 0 1px var(--border-strong);
     }
   }
 }
@@ -1133,7 +1131,7 @@ textarea.input {
   font-size: 11.5px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 3px;
   white-space: nowrap;
   background: var(--info-soft);
   color: var(--info);
@@ -1620,10 +1618,8 @@ table.table {
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  &:hover {
-    box-shadow: var(--shadow);
-  }
+    &:hover {
+      }
   &--high {
     border-top: 3px solid var(--crit);
   }
@@ -1650,7 +1646,7 @@ table.table {
       font-size: 26px !important;
       width: 40px;
       height: 40px;
-      border-radius: 10px;
+      border-radius: 4px;
       background: var(--surface-3);
       display: grid;
       place-items: center;
@@ -1698,7 +1694,7 @@ table.table {
   font-size: 12px;
   font-weight: 500;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--surface-3);
   color: var(--text-2);
   &--critical {
@@ -1733,28 +1729,33 @@ table.table {
 }
 
 // ═════════════════════ Статистика ═════════════════════
+// Сводка статистики — одна таблица «показатель / значение» с сеткой линий, а не ряд одинаковых плиток.
 .ledger {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   &__item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 12px 14px;
     display: flex;
-    flex-direction: column-reverse;
-    justify-content: flex-end;
-    gap: 4px;
-    b {
-      font-size: 20px;
-      font-weight: 600;
-      line-height: 1.15;
-      font-variant-numeric: tabular-nums;
-    }
+    flex-direction: row-reverse; // в разметке значение идёт первым, а читать удобнее «подпись … значение»
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    margin: 0 -1px -1px 0;
     span {
-      font-size: 12px;
-      color: var(--text-3);
+      font-size: 13px;
+      color: var(--text-2);
+    }
+    b {
+      font-size: 16px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
     &--warn b {
       color: var(--warn);
@@ -1967,10 +1968,73 @@ table.table {
 .uid {
   display: block;
   margin-top: 2px;
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--mono);
   font-size: 11px;
   font-weight: 400;
   color: var(--text-3);
   white-space: nowrap;
   user-select: all;
+}
+
+
+// ═════════════════════ Состояния и обратная связь ═════════════════════
+.state__icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-3);
+  font-size: 22px;
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+  &--error {
+    color: var(--crit);
+    border-color: var(--crit-border);
+  }
+}
+
+.modal__icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 20px;
+  flex: none;
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Остаток изменился (заказ, поставка, списание) — короткая подсветка, чтобы изменение заметили.
+@keyframes changed {
+  0%,
+  40% {
+    box-shadow: inset 0 0 0 2px var(--primary);
+    background: var(--primary-soft);
+  }
+}
+
+.metric.is-changed {
+  animation: changed 1.6s ease-out;
+}
+
+h1,
+h2,
+.pcard__name,
+.risk__title {
+  text-wrap: balance;
+}
+
+.risk__text,
+.hot-card__summary,
+.state span {
+  text-wrap: pretty;
 }

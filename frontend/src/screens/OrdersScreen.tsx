@@ -88,7 +88,7 @@ export function OrdersScreen() {
             <Loadable q={dishes} skeleton={<LoadingGrid count={12} />}>
               {(all) => {
                 const list = all.filter((d) => (!category || d.category === category) && matches(d, search));
-                if (list.length === 0) return <EmptyState icon="🍽️" title="Блюда не найдены" />;
+                if (list.length === 0) return <EmptyState icon="chef" title="Блюда не найдены" />;
                 return (
                   <div className="grid">
                     {list.map((d) => (
@@ -218,7 +218,7 @@ function OrderComposer({ lines, dishes, add, clear }: { lines: Lines; dishes: Di
       </div>
       <div className="rightbar__body">
         {entries.length === 0 ? (
-          <EmptyState icon="📋" title="Заказ пуст" text="Добавьте блюда из меню кнопкой «В заказ»." />
+          <EmptyState icon="list" title="Заказ пуст" text="Добавьте блюда из меню кнопкой «В заказ»." />
         ) : (
           entries.map(({ dish, servings }) =>
             dish ? (
@@ -416,7 +416,7 @@ function OrderBody({ order }: { order: Order }) {
 function OrderDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const q = useQuery<Order>(`/orders/${id}`);
   return (
-    <Modal title={q.data ? `Заказ ${q.data.number}` : 'Заказ'} icon="🧾" onClose={onClose} size="md">
+    <Modal title={q.data ? `Заказ ${q.data.number}` : 'Заказ'} icon="receipt" onClose={onClose} size="md">
       <Loadable q={q} dark>
         {(o) => <OrderBody order={o} />}
       </Loadable>
@@ -437,7 +437,7 @@ function OrderHistory({ search, status }: { search: string; status: string }) {
           {(all) => {
             const t = search.trim().toLowerCase();
             const list = all.filter((o) => !t || o.number.toLowerCase().includes(t) || o.lines.some((l) => l.dishName.toLowerCase().includes(t)));
-            if (list.length === 0) return <EmptyState icon="🧾" title="Заказов не найдено" />;
+            if (list.length === 0) return <EmptyState icon="receipt" title="Заказов не найдено" />;
             return (
               <div className="table-wrap">
                 <table className="table">

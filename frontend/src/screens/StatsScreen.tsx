@@ -185,7 +185,7 @@ export function StatsScreen() {
                 <div className="sheet table-wrap">
                   <h3>Прогноз дефицита (по расходу и срокам партий)</h3>
                   {!s.forecastHasData ? (
-                    <EmptyState icon="📈" title="Недостаточно данных для прогноза" />
+                    <EmptyState icon="chart" title="Недостаточно данных для прогноза" />
                   ) : (
                     <table className="table">
                       <thead>

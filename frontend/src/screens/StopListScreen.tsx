@@ -46,7 +46,7 @@ export function StopListScreen() {
           {(d) => (
             <div className="stack">
               {d.items.length === 0 ? (
-                <EmptyState icon="✅" title="Стоп-лист пуст" text="Все блюда меню можно приготовить из доступных остатков." />
+                <EmptyState icon="check" title="Стоп-лист пуст" text="Все блюда меню можно приготовить из доступных остатков." />
               ) : (
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
                   {d.items.map((it) => (
@@ -99,7 +99,7 @@ export function StopListScreen() {
               <div className="sheet">
                 <h3>Прогноз: блюда, которые скоро попадут в стоп-лист</h3>
                 {d.forecast.length === 0 ? (
-                  <EmptyState icon="📈" title="В ближайшие 7 дней рисков не видно" text="Прогноз строится по среднему расходу и срокам партий." />
+                  <EmptyState icon="chart" title="В ближайшие 7 дней рисков не видно" text="Прогноз строится по среднему расходу и срокам партий." />
                 ) : (
                   <div className="table-wrap">
                     <table className="table">

@@ -95,7 +95,7 @@ export function ExpiryScreen() {
         <Loadable q={q}>
           {() =>
             list.length === 0 ? (
-              <EmptyState icon="🔍" title="Партий не найдено" />
+              <EmptyState icon="search" title="Партий не найдено" />
             ) : (
               <div className="table-wrap">
                 <table className="table">
@@ -245,7 +245,7 @@ export function AlertsScreen() {
         <Loadable q={q}>
           {(list) =>
             list.length === 0 ? (
-              <EmptyState icon="🔕" title="Предупреждений нет" />
+              <EmptyState icon="bell" title="Предупреждений нет" />
             ) : (
               <div className="table-wrap">
                 <table className="table">

@@ -57,7 +57,7 @@ export function HotScreen() {
           {(d) => (
             <div className="stack">
               {offers.length === 0 ? (
-                <EmptyState icon="🧊" title="Горячих предложений нет" text="Нет пригодных партий с истекающим сроком, которые можно реализовать через доступные блюда." />
+                <EmptyState icon="flame" title="Горячих предложений нет" text="Нет пригодных партий с истекающим сроком, которые можно реализовать через доступные блюда." />
               ) : (
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                   {offers.map((o, i) => (
@@ -141,7 +141,7 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
       </div>
       <div className="rightbar__body">
         {!offer ? (
-          <EmptyState dark icon="👈" title="Выберите блюдо" />
+          <EmptyState dark icon="chevron" title="Выберите блюдо" />
         ) : (
           <>
             <div className="row" style={{ flexWrap: 'nowrap' }}>

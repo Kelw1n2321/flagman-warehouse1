@@ -34,6 +34,8 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
+export const isIconName = (v: string): v is IconName => v in PATHS;
+
 const STROKE = 2.2;
 
 /**

@@ -262,7 +262,7 @@ function ProductModal({ id, onClose }: { id: number; onClose: () => void }) {
                       />
                     </>
                   ) : (
-                    <EmptyState icon="📈" title="Недостаточно данных" text="Прогноз появится после первых списаний на заказы." />
+                    <EmptyState icon="chart" title="Недостаточно данных" text="Прогноз появится после первых списаний на заказы." />
                   )}
                 </div>
               )}

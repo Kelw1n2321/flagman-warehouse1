@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Batch, Product } from '../api/types';
 import { compact, EXPIRY_LABEL, humanDate, qty, relative, RISK_LABEL, riskTier, TIER_LABEL, unitLabel } from '../lib/format';
 import { Icon } from './Icon';
@@ -7,9 +7,9 @@ import { Emoji } from './ui';
 export type Tone = 'ok' | 'warn' | 'crit' | 'neutral';
 
 /** Показатель карточки: значение + подпись; цвет дублирует смысл, а не заменяет его. */
-export function Metric({ label, value, tone, zero, title }: { label: string; value: ReactNode; tone: Tone; zero?: boolean; title?: string }) {
+export function Metric({ label, value, tone, zero, title, changed }: { label: string; value: ReactNode; tone: Tone; zero?: boolean; title?: string; changed?: boolean }) {
   return (
-    <span className={`metric ${tone === 'neutral' ? '' : `metric--${tone}`} ${zero ? 'is-zero' : ''}`} title={title}>
+    <span className={`metric ${tone === 'neutral' ? '' : `metric--${tone}`} ${zero ? 'is-zero' : ''} ${changed ? 'is-changed' : ''}`} title={title}>
       <span className="metric__value">{value}</span>
       <span className="metric__label">{label}</span>
     </span>
@@ -23,6 +23,20 @@ export function StatusPill({ tier, children }: { tier: 'ok' | 'attention' | 'cri
       {children}
     </span>
   );
+}
+
+/** true на короткое время после изменения значения (не при первом показе) — подсветка обновлённого остатка. */
+function useChanged(value: number): boolean {
+  const prev = useRef(value);
+  const [changed, setChanged] = useState(false);
+  useEffect(() => {
+    if (prev.current === value) return;
+    prev.current = value;
+    setChanged(true);
+    const t = window.setTimeout(() => setChanged(false), 1600);
+    return () => window.clearTimeout(t);
+  }, [value]);
+  return changed;
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -54,6 +68,7 @@ export function ProductCard({
   const deficit = Math.max(0, p.minStock - p.available);
   const u = unitLabel(p.unit);
   const statusText = tier === 'ok' ? TIER_LABEL.ok : RISK_LABEL[p.risk === 'ok' ? 'low' : p.risk];
+  const changed = useChanged(p.available);
 
   return (
     <button
@@ -77,7 +92,7 @@ export function ProductCard({
       </span>
 
       <span className="pcard__metrics">
-        <Metric label="Доступно" value={`${compact(p.available)} ${u}`} tone={p.belowMinimum ? 'warn' : 'ok'} zero={p.available === 0} title={`Доступно: ${qty(p.available, p.unit)}`} />
+        <Metric label="Доступно" value={`${compact(p.available)} ${u}`} tone={p.belowMinimum ? 'warn' : 'ok'} zero={p.available === 0} title={`Доступно: ${qty(p.available, p.unit)}`} changed={changed} />
         <Metric label="Истекает" value={`${compact(atRisk)} ${u}`} tone="warn" zero={atRisk === 0} title={`Истекает в ближайшие ${soonHours} ч: ${qty(atRisk, p.unit)}`} />
         {p.expired > 0 || !p.belowMinimum ? (
           <Metric label="Просрочка" value={`${compact(p.expired)} ${u}`} tone="crit" zero={p.expired === 0} title={`Просрочено, не используется: ${qty(p.expired, p.unit)}`} />
@@ -92,7 +107,6 @@ export function ProductCard({
           {p.total !== p.available && ` · всего ${qty(p.total, p.unit)}`}
         </Row>
         <Row label="Ближайший срок">{p.earliestExpiry ? humanDate(p.earliestExpiry, tz, now) : '—'}</Row>
-        <Row label="Минимальный остаток">{qty(p.minStock, p.unit, { small: false })}</Row>
       </span>
       {p.blockedDishes.length > 0 && (
         <span className="pcard__alert" title={p.blockedDishes.join(', ')}>

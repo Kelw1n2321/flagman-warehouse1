@@ -117,7 +117,7 @@ export function StockScreen() {
         ) : view === 'products' ? (
           visible.length === 0 ? (
             <EmptyState
-              icon="🔍"
+              icon="search"
               title="Ничего не найдено"
               text="Измените поиск, категорию или фильтр состояния."
               action={
@@ -136,7 +136,7 @@ export function StockScreen() {
         ) : !batches.data ? (
           <LoadingGrid />
         ) : batchList.length === 0 ? (
-          <EmptyState icon="📦" title="Нет активных партий" text="Для выбранных продуктов нет партий с остатком." />
+          <EmptyState icon="box" title="Нет активных партий" text="Для выбранных продуктов нет партий с остатком." />
         ) : (
           <div className="grid">
             {batchList.map((b) => (

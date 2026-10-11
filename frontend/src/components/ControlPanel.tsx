@@ -137,7 +137,7 @@ function RisksTab({ selected, toggle }: TabProps) {
         const sorted = [...list].sort((a, b) => sev(b) - sev(a) || +new Date(b.createdAt) - +new Date(a.createdAt));
         const forecast = (stop.data?.forecast ?? []).filter((f) => f.hoursUntil <= 48).slice(0, 4);
         if (sorted.length === 0 && forecast.length === 0)
-          return <EmptyState dark icon="✅" title="Рисков нет" text="Все партии в норме, блюда доступны." />;
+          return <EmptyState dark icon="check" title="Рисков нет" text="Все партии в норме, блюда доступны." />;
         return (
           <>
             {sorted.map((a) => (
@@ -150,7 +150,7 @@ function RisksTab({ selected, toggle }: TabProps) {
                 meta={
                   <>
                     <span>{humanDate(a.createdAt, tz, now)}</span>
-                    {a.status === 'acknowledged' && <span>✓ просмотрено</span>}
+                    {a.status === 'acknowledged' && <span>просмотрено</span>}
                   </>
                 }
                 open={selected === `a${a.id}`}
@@ -228,7 +228,7 @@ function ExpiryTab({ selected, toggle }: TabProps) {
     <Loadable q={q} dark>
       {(all) => {
         const list = all.filter((b) => b.expiry !== 'normal').slice(0, 30);
-        if (list.length === 0) return <EmptyState dark icon="🟢" title="Сроки в норме" />;
+        if (list.length === 0) return <EmptyState dark icon="check" title="Сроки в норме" />;
         return (
           <>
             {list.map((b) => (
@@ -278,7 +278,7 @@ function DeficitTab({ selected, toggle }: TabProps) {
     <Loadable q={q} dark>
       {(all) => {
         const list = all.filter((p) => p.belowMinimum || p.blockedDishes.length > 0 || p.available <= 0);
-        if (list.length === 0) return <EmptyState dark icon="📦" title="Дефицита нет" />;
+        if (list.length === 0) return <EmptyState dark icon="box" title="Дефицита нет" />;
         return (
           <>
             {list.map((p) => (
