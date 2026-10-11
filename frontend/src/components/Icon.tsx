@@ -30,6 +30,9 @@ const PATHS = {
   sun: 'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
   moon: 'M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z',
   monitor: 'M3 5h18v11H3zM8 20h8M12 16v4',
+  chevrons: 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
+  calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+  filter: 'M4 6h16M7 12h10M10 18h4',
 } as const;
 
 export type IconName = keyof typeof PATHS;

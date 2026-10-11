@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Batch, Product } from '../api/types';
 import { BatchCard, ProductCard } from '../components/Cards';
 import { ControlPanel } from '../components/ControlPanel';
-import { CategoryList, SearchBox, SectionNav, Workspace } from '../components/Shell';
+import { CategoryList, SearchBox, Workspace } from '../components/Shell';
 import { EmptyState, ErrorState, LoadingBar, LoadingGrid } from '../components/ui';
 import { useLive, useNow, useQuery, useTz, useUi } from '../state/store';
 
@@ -84,7 +84,6 @@ export function StockScreen() {
                 <span className="count">{counts[f.key]}</span>
               </button>
             ))}
-            <SectionNav />
           </div>
         </>
       }

@@ -1,7 +1,7 @@
 import type { StopList } from '../api/types';
 import { ControlPanel } from '../components/ControlPanel';
 import { Icon } from '../components/Icon';
-import { SectionNav, Workspace } from '../components/Shell';
+import { Workspace } from '../components/Shell';
 import { Emoji, EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
 import { humanDate, qty, relative } from '../lib/format';
 import { useLive, useNow, useQuery, useTz, useUi } from '../state/store';
@@ -35,7 +35,6 @@ export function StopListScreen() {
           <button className="side-btn side-btn--nav" onClick={() => navigate('dishes')}>
             <Icon name="chef" /> <span style={{ flex: 1 }}>Рецептуры</span>
           </button>
-          <SectionNav />
         </div>
       }
       right={<ControlPanel />}

@@ -4,7 +4,7 @@ import type { Alert, Batch, Dish, Movement, Product, Settings } from '../api/typ
 import { ALERT_ICON, ControlPanel } from '../components/ControlPanel';
 import { Icon } from '../components/Icon';
 import { MOVEMENT_LABEL, MovementTable } from '../components/ProductModal';
-import { CategoryList, SearchBox, SectionNav, Workspace } from '../components/Shell';
+import { CategoryList, SearchBox, Workspace } from '../components/Shell';
 import { Emoji, EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
 import { dateShort, EXPIRY_LABEL, humanDate, qty, relative, unitLabel } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi } from '../state/store';
@@ -62,7 +62,6 @@ export function ExpiryScreen() {
               </button>
             ))}
             <CategoryList value={category} onChange={setCategory} />
-            <SectionNav />
           </div>
         </>
       }
@@ -179,7 +178,6 @@ export function JournalScreen() {
               <span style={{ flex: 1, textAlign: 'left' }}>{t ? MOVEMENT_LABEL[t] : 'Все операции'}</span>
             </button>
           ))}
-          <SectionNav />
         </div>
       }
     >
@@ -229,7 +227,6 @@ export function AlertsScreen() {
               <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
             </button>
           ))}
-          <SectionNav />
         </div>
       }
     >
@@ -321,7 +318,6 @@ export function DishesScreen() {
             <button className="side-btn side-btn--nav" onClick={() => setEditing('new')}>
               <Icon name="plus" /> <span style={{ flex: 1 }}>Новое блюдо</span>
             </button>
-            <SectionNav />
           </div>
         </>
       }
@@ -471,7 +467,7 @@ export function SettingsScreen() {
   };
 
   return (
-    <Workspace sidebar={<div className="sidebar__scroll"><SectionNav /></div>}>
+    <Workspace>
       <div className="tray">
         {!form ? (
           <Loadable q={q}>{() => null}</Loadable>

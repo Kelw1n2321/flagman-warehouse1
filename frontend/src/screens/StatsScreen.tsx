@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Stats } from '../api/types';
 import { BarChart, SERIES } from '../components/Charts';
-import { CategoryList, SectionNav, Workspace } from '../components/Shell';
+import { CategoryList, Workspace } from '../components/Shell';
 import { Bar, Emoji, EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
 import { humanDate, qty, relative } from '../lib/format';
 import { useNow, useQuery, useTz, useUi } from '../state/store';
@@ -32,7 +32,6 @@ export function StatsScreen() {
             </button>
           ))}
           <CategoryList value={category} onChange={setCategory} />
-          <SectionNav />
         </div>
       }
     >

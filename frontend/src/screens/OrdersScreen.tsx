@@ -3,7 +3,7 @@ import { api, ApiError } from '../api/client';
 import type { Dish, Order, OrderCheck } from '../api/types';
 import { Metric, StatusPill } from '../components/Cards';
 import { Icon } from '../components/Icon';
-import { SearchBox, SectionNav, Workspace } from '../components/Shell';
+import { SearchBox, Workspace } from '../components/Shell';
 import { Emoji, EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
 import { dateShort, humanDate, qty } from '../lib/format';
 import { useLive, useNow, useQuery, useTz, useUi } from '../state/store';
@@ -72,7 +72,6 @@ export function OrdersScreen() {
                 ))}
               </>
             )}
-            <SectionNav />
           </div>
         </>
       }

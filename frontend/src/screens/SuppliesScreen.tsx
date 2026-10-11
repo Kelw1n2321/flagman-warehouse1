@@ -3,7 +3,7 @@ import { api, ApiError } from '../api/client';
 import type { Product, Recommendation, Supply } from '../api/types';
 import { ControlPanel } from '../components/ControlPanel';
 import { Icon } from '../components/Icon';
-import { SearchBox, SectionNav, Workspace } from '../components/Shell';
+import { SearchBox, Workspace } from '../components/Shell';
 import { Emoji, EmptyState, ErrorState, Loadable, LoadingBar, Modal, Tag } from '../components/ui';
 import { dateShort, EXPIRY_LABEL, hoursLeft, humanDate, qty, relative, toLocalInput, unitLabel } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi, type SupplyDraftLine } from '../state/store';
@@ -54,7 +54,6 @@ export function SuppliesScreen() {
                 ))}
               </>
             )}
-            <SectionNav />
           </div>
         </>
       }

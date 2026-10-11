@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { dayOfMonth, timeOnly, weekday } from '../lib/format';
-import { useClock, useLive, useTz, useUi, type Screen } from '../state/store';
 import { useTheme } from '../lib/theme';
+import { useClock, useLive, useTz, useUi, type Screen } from '../state/store';
 import { Icon, type IconName } from './Icon';
 
 export const SCREEN_TITLES: Record<Screen, string> = {
@@ -18,119 +19,256 @@ export const SCREEN_TITLES: Record<Screen, string> = {
   settings: 'Настройки',
 };
 
-export function TopBar() {
+const SCREEN_SUBTITLES: Record<Screen, string> = {
+  stock: 'Остатки по продуктам и партиям, сроки годности и дефицит в реальном времени.',
+  supplies: 'Приёмка поставок: каждая строка становится отдельной партией со своим сроком.',
+  orders: 'Проверка ингредиентов и списание по FEFO — сначала партии с ранним сроком.',
+  'stop-list': 'Блюда, которые нельзя приготовить из доступных остатков, и прогноз новых стопов.',
+  hot: 'Что продвигать, чтобы использовать продукты до окончания срока годности.',
+  stats: 'Поступления, списания, отказы и прогноз дефицита по реальным данным склада.',
+  expiry: 'Все партии по ближайшему сроку: норма, скоро истекает, критично, просрочено.',
+  journal: 'Каждое изменение остатка партии — приёмка, расход, списание, корректировка.',
+  alerts: 'Текущие предупреждения и история: условия закрываются автоматически.',
+  dishes: 'Состав блюд на порцию. Изменение рецептуры сразу пересчитывает стоп-лист.',
+  settings: 'Пороги сроков, часовой пояс, автосписание и генератор событий.',
+};
+
+// ───────────────────────── Боковое меню ─────────────────────────
+
+interface NavItem {
+  screen: Screen;
+  icon: IconName;
+}
+
+const GROUPS: { title: string; items: NavItem[] }[] = [
+  {
+    title: 'Основное',
+    items: [
+      { screen: 'stock', icon: 'box' },
+      { screen: 'supplies', icon: 'truck' },
+      { screen: 'orders', icon: 'receipt' },
+      { screen: 'stop-list', icon: 'stop' },
+      { screen: 'hot', icon: 'flame' },
+      { screen: 'stats', icon: 'chart' },
+    ],
+  },
+  {
+    title: 'Контроль',
+    items: [
+      { screen: 'expiry', icon: 'clock' },
+      { screen: 'journal', icon: 'list' },
+      { screen: 'alerts', icon: 'bell' },
+    ],
+  },
+  {
+    title: 'Справочники',
+    items: [
+      { screen: 'dishes', icon: 'chef' },
+      { screen: 'settings', icon: 'gear' },
+    ],
+  },
+];
+
+function useBadges(): Partial<Record<Screen, { value: number; tone: 'crit' | 'warn' | 'info' }>> {
+  const { summary: s } = useLive();
+  if (!s) return {};
+  return {
+    'stop-list': { value: s.stopListCount, tone: 'crit' },
+    hot: { value: s.hotOffers, tone: 'warn' },
+    expiry: { value: s.criticalBatches + s.expiredBatches, tone: 'crit' },
+    alerts: { value: s.activeAlerts, tone: 'info' },
+  };
+}
+
+export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed: boolean; onCollapse: () => void; open: boolean; onClose: () => void }) {
   const { route, navigate } = useUi();
   const { summary, connected } = useLive();
-  const tz = useTz();
-  const now = useClock();
+  const badges = useBadges();
+
+  return (
+    <aside className={`appnav ${open ? 'is-open' : ''}`} aria-label="Разделы">
+      <div className="appnav__brand">
+        <span className="appnav__logo" aria-hidden>
+          Ф
+        </span>
+        <span className="appnav__name">Флагман</span>
+        <button className="appnav__collapse" onClick={onCollapse} aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'} title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}>
+          <Icon name="chevrons" />
+        </button>
+      </div>
+      <nav className="appnav__scroll">
+        {GROUPS.map((g) => (
+          <div key={g.title} className="appnav__group">
+            <div className="appnav__title">{g.title}</div>
+            {g.items.map((n) => {
+              const b = badges[n.screen];
+              const active = route.screen === n.screen;
+              return (
+                <button
+                  key={n.screen}
+                  className={`appnav__item ${active ? 'is-active' : ''}`}
+                  onClick={() => (navigate(n.screen), onClose())}
+                  aria-current={active ? 'page' : undefined}
+                  title={collapsed ? SCREEN_TITLES[n.screen] : undefined}
+                >
+                  <Icon name={n.icon} />
+                  <span className="appnav__label">{SCREEN_TITLES[n.screen]}</span>
+                  {!!b?.value && <span className={`appnav__badge appnav__badge--${b.tone}`}>{b.value}</span>}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+      <div className="appnav__status" title={summary?.settings.mode === 'postgres' ? 'Хранилище: PostgreSQL' : 'Хранилище: демо-база SQLite'}>
+        <div className="appnav__status-row">
+          <i className={`dot ${connected ? 'dot--ok' : 'dot--bad'}`} />
+          <b>{connected ? 'Склад онлайн' : 'Нет связи'}</b>
+        </div>
+        <span>{summary?.settings.mode === 'postgres' ? 'PostgreSQL · обновления в реальном времени' : 'Демо-режим · данные обновляются в реальном времени'}</span>
+      </div>
+    </aside>
+  );
+}
+
+// ───────────────────────── Верхняя панель ─────────────────────────
+
+export function TopBar({ onMenu }: { onMenu: () => void }) {
+  const { navigate, route } = useUi();
+  const { summary } = useLive();
   const alerts = summary?.activeAlerts ?? 0;
   const [theme, cycleTheme] = useTheme();
   const themeLabel = theme === 'system' ? 'Тема: как в системе' : theme === 'light' ? 'Тема: светлая' : 'Тема: тёмная';
 
   return (
     <header className="topbar">
-      <div className="brand">
-        <span className="brand__logo" aria-hidden>
-          Ф
-        </span>
-        <span>
-          <div className="brand__name">Флагман</div>
-          <div className="brand__sub">Склад ресторана</div>
-        </span>
+      <button className="iconbtn mobile-only" onClick={onMenu} aria-label="Открыть меню">
+        <Icon name="menu" />
+      </button>
+      <div className="crumbs" aria-label="Текущий раздел">
+        <span>Склад ресторана</span>
+        <Icon name="chevron" />
+        <b>{SCREEN_TITLES[route.screen]}</b>
       </div>
-      <h1>{SCREEN_TITLES[route.screen]}</h1>
       <div className="topbar__right">
-        <span
-          className="conn"
-          title={
-            (connected ? 'Обновления в реальном времени подключены' : 'Нет связи с сервером, переподключение…') +
-            (summary?.settings.mode === 'postgres' ? ' · PostgreSQL' : ' · демо-режим (SQLite)')
-          }
-        >
-          <i className={`dot ${connected ? 'dot--ok' : 'dot--bad'}`} /> <span>{connected ? 'Онлайн' : 'Нет связи'}</span>
-        </span>
-        <div className="clock" aria-label="Время ресторана">
-          <b>{timeOnly(now, tz)}</b>
-          <small>
-            {weekday(now, tz).toLowerCase()}, {dayOfMonth(now, tz)} · {tz.split('/').pop()?.replace('_', ' ')}
-          </small>
-        </div>
-        <button className="bell" onClick={cycleTheme} aria-label={`${themeLabel}. Нажмите, чтобы переключить`} title={`${themeLabel} — нажмите, чтобы переключить`}>
+        {/* Сюда экран выносит свои кнопки выдвижных панелей («Фильтры», «Контроль»). */}
+        <div id="topbar-slot" className="topbar__slot" />
+        <button className="iconbtn" onClick={cycleTheme} aria-label={`${themeLabel}. Нажмите, чтобы переключить`} title={`${themeLabel} — нажмите, чтобы переключить`}>
           <Icon name={theme === 'system' ? 'monitor' : theme === 'light' ? 'sun' : 'moon'} />
         </button>
-        <button
-          className="bell"
-          onClick={() => navigate('alerts')}
-          aria-label={`Предупреждения: ${alerts} активных`}
-          title="Активные предупреждения"
-        >
+        <button className="iconbtn" onClick={() => navigate('alerts')} aria-label={`Предупреждения: ${alerts} активных`} title="Активные предупреждения">
           <Icon name="bell" />
-          {alerts > 0 && <span className="bell__count">{alerts}</span>}
+          {alerts > 0 && <span className="iconbtn__count">{alerts}</span>}
         </button>
       </div>
     </header>
   );
 }
 
+// ───────────────────────── Заголовок экрана ─────────────────────────
+
+const PRIMARY_ACTION: Partial<Record<Screen, { label: string; icon: IconName; to: [Screen, string?] }>> = {
+  stock: { label: 'Принять поставку', icon: 'truck', to: ['supplies', 'new'] },
+  supplies: { label: 'Новая поставка', icon: 'plus', to: ['supplies', 'new'] },
+  'stop-list': { label: 'Что заказать', icon: 'inbox', to: ['supplies', 'recommendations'] },
+  hot: { label: 'Оформить заказ', icon: 'receipt', to: ['orders'] },
+  expiry: { label: 'Что приготовить', icon: 'flame', to: ['hot'] },
+};
+
+export function PageHeader() {
+  const { route, navigate } = useUi();
+  const tz = useTz();
+  const now = useClock();
+  const action = PRIMARY_ACTION[route.screen];
+  return (
+    <div className="pagehead">
+      <div>
+        <h1>{SCREEN_TITLES[route.screen]}</h1>
+        <p>{SCREEN_SUBTITLES[route.screen]}</p>
+      </div>
+      <div className="pagehead__actions">
+        <span className="datepill" title={`Время ресторана · ${tz}`}>
+          <Icon name="calendar" />
+          {weekday(now, tz).toLowerCase()}, {dayOfMonth(now, tz)} · {timeOnly(now, tz)}
+        </span>
+        {action && (
+          <button className="btn btn--blue" onClick={() => navigate(action.to[0], action.to[1] ?? null)}>
+            <Icon name={action.icon} /> {action.label}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── Сводка ─────────────────────────
+
 export function Readouts() {
-  const { summary } = useLive();
+  const { summary: s } = useLive();
   const { navigate } = useUi();
-  if (!summary) return <div className="readouts" style={{ minHeight: 34 }} />;
-  const items: { sq: string; label: string; value: ReactNode; go: () => void; title: string }[] = [
-    { sq: 'green', label: 'В наличии', value: `${summary.productsInStock}/${summary.productCount}`, go: () => navigate('stock'), title: 'Продуктов с доступным остатком' },
-    { sq: 'gray', label: 'Партий', value: summary.activeBatches, go: () => navigate('expiry'), title: 'Активных партий' },
-    { sq: 'yellow', label: 'Истекает', value: summary.expiringBatches + summary.criticalBatches, go: () => navigate('expiry'), title: 'Партий со сроком в зоне риска' },
-    { sq: 'red', label: 'Просрочено', value: summary.expiredBatches, go: () => navigate('expiry'), title: 'Партий с истёкшим сроком на складе' },
-    { sq: 'red', label: 'Стоп-лист', value: `${summary.stopListCount}/${summary.dishCount}`, go: () => navigate('stop-list'), title: 'Блюд в стоп-листе' },
-    { sq: 'blue', label: 'Заказов сегодня', value: `${summary.ordersToday} / отказов ${summary.rejectedToday}`, go: () => navigate('orders'), title: 'Выполнено · отклонено сегодня' },
+  if (!s) return <div className="stats-row" style={{ minHeight: 88 }} />;
+  const items: { icon: IconName; label: string; value: ReactNode; note: string; tone?: 'crit' | 'warn' | 'ok'; go: () => void }[] = [
+    { icon: 'box', label: 'В наличии', value: `${s.productsInStock}/${s.productCount}`, note: `${s.activeBatches} активных партий`, tone: 'ok', go: () => navigate('stock') },
+    { icon: 'clock', label: 'Истекает срок', value: s.expiringBatches + s.criticalBatches, note: `${s.criticalBatches} — критично`, tone: s.criticalBatches ? 'warn' : undefined, go: () => navigate('expiry') },
+    { icon: 'alert', label: 'Просрочено', value: s.expiredBatches, note: 'партий на складе', tone: s.expiredBatches ? 'crit' : undefined, go: () => navigate('expiry') },
+    { icon: 'stop', label: 'Стоп-лист', value: `${s.stopListCount}/${s.dishCount}`, note: 'блюд недоступно', tone: s.stopListCount ? 'crit' : undefined, go: () => navigate('stop-list') },
+    { icon: 'receipt', label: 'Заказы', value: s.ordersToday, note: `сегодня · отказов ${s.rejectedToday}`, tone: s.rejectedToday ? 'warn' : undefined, go: () => navigate('orders') },
   ];
   return (
-    <div className="readouts" aria-label="Сводка склада">
+    <div className="stats-row" aria-label="Сводка склада">
       {items.map((i) => (
-        <button key={i.label} onClick={i.go} title={i.title}>
-          <span className={`sq sq--${i.sq}`} aria-hidden />
-          {i.label} <b>{i.value}</b>
+        <button key={i.label} className="statcard" onClick={i.go}>
+          <span className="statcard__head">
+            <span className="statcard__icon">
+              <Icon name={i.icon} />
+            </span>
+            {i.label}
+          </span>
+          <span className="statcard__body">
+            <span className="statcard__value">{i.value}</span>
+            <span className={`statcard__note ${i.tone ? `statcard__note--${i.tone}` : ''}`}>{i.note}</span>
+          </span>
         </button>
       ))}
     </div>
   );
 }
 
-const NAV: { screen: Screen; label: string; short: string; icon: IconName }[] = [
-  { screen: 'stock', label: 'Склад', short: 'Склад', icon: 'box' },
-  { screen: 'supplies', label: 'Поставки', short: 'Поставки', icon: 'truck' },
-  { screen: 'orders', label: 'Заказы', short: 'Заказы', icon: 'receipt' },
-  { screen: 'stop-list', label: 'Стоп-лист', short: 'Стоп', icon: 'stop' },
-  { screen: 'hot', label: 'Горячие предложения', short: 'Горячее', icon: 'flame' },
-  { screen: 'stats', label: 'Статистика', short: 'Отчёты', icon: 'chart' },
+// ───────────────────────── Нижняя панель (только телефон) ─────────────────────────
+
+const MOBILE_NAV: { screen: Screen; short: string; icon: IconName }[] = [
+  { screen: 'stock', short: 'Склад', icon: 'box' },
+  { screen: 'supplies', short: 'Поставки', icon: 'truck' },
+  { screen: 'orders', short: 'Заказы', icon: 'receipt' },
+  { screen: 'stop-list', short: 'Стоп', icon: 'stop' },
+  { screen: 'hot', short: 'Горячее', icon: 'flame' },
+  { screen: 'stats', short: 'Отчёты', icon: 'chart' },
 ];
 
 export function BottomNav() {
   const { route, navigate } = useUi();
-  const { summary } = useLive();
-  const badge = (s: Screen) => (s === 'stop-list' ? summary?.stopListCount : s === 'hot' ? summary?.hotOffers : 0) || 0;
+  const badges = useBadges();
   return (
-    <nav className="bottombar" aria-label="Разделы">
-      {NAV.map((n) => (
-        <button
-          key={n.screen}
-          className={`navbtn ${route.screen === n.screen ? 'is-active' : ''}`}
-          onClick={() => navigate(n.screen)}
-          aria-current={route.screen === n.screen ? 'page' : undefined}
-        >
-          <Icon name={n.icon} tight />
-          <span className="navbtn__full">{n.label}</span>
-          <span className="navbtn__short">{n.short}</span>
-          {badge(n.screen) > 0 && <span className="badge">{badge(n.screen)}</span>}
-        </button>
-      ))}
+    <nav className="bottombar" aria-label="Основные разделы">
+      {MOBILE_NAV.map((n) => {
+        const b = badges[n.screen];
+        return (
+          <button key={n.screen} className={`navbtn ${route.screen === n.screen ? 'is-active' : ''}`} onClick={() => navigate(n.screen)} aria-current={route.screen === n.screen ? 'page' : undefined}>
+            <Icon name={n.icon} />
+            <span>{n.short}</span>
+            {!!b?.value && <span className="badge">{b.value}</span>}
+          </button>
+        );
+      })}
     </nav>
   );
 }
 
-/** Рабочая область: левая панель | центр | правая панель. На узких экранах боковые — выдвижные. */
+// ───────────────────────── Рабочая область экрана ─────────────────────────
+
+/** Фильтры | содержимое | правая панель. На узких экранах боковые панели выдвижные. */
 export function Workspace({ sidebar, right, rightLabel = 'Контроль', rightCount, children }: {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   right?: ReactNode;
   rightLabel?: string;
   rightCount?: number;
@@ -138,31 +276,40 @@ export function Workspace({ sidebar, right, rightLabel = 'Контроль', rig
 }) {
   const [left, setLeft] = useState(false);
   const [rightOpen, setRight] = useState(false);
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const { route } = useUi();
   useEffect(() => {
     setLeft(false);
     setRight(false);
   }, [route.screen, route.param]);
+  useEffect(() => setSlot(document.getElementById('topbar-slot')), []);
+
+  const toggles = (
+    <>
+      {sidebar && (
+        <button className="btn btn--sm mobile-only" onClick={() => setLeft(true)}>
+          <Icon name="filter" /> Фильтры
+        </button>
+      )}
+      {right && (
+        <button className="btn btn--sm drawer-toggle" onClick={() => setRight(true)}>
+          <Icon name="panel" /> {rightLabel}
+          {rightCount ? <span className="btn__count">{rightCount}</span> : null}
+        </button>
+      )}
+    </>
+  );
 
   return (
-    <div className={`workspace ${right ? '' : 'workspace--wide'}`}>
+    <div className={`workspace ${right ? '' : 'workspace--wide'} ${sidebar ? '' : 'workspace--nofilters'}`}>
       {(left || rightOpen) && <div className="scrim" onClick={() => (setLeft(false), setRight(false))} />}
-      <aside className={`sidebar ${left ? 'is-open' : ''}`} aria-label="Поиск и фильтры">
-        {sidebar}
-      </aside>
+      {sidebar && (
+        <aside className={`sidebar ${left ? 'is-open' : ''}`} aria-label="Поиск и фильтры">
+          {sidebar}
+        </aside>
+      )}
       <main className="col" style={{ minWidth: 0 }}>
-        <div className="ws-toggles">
-          <button className="btn btn--sm mobile-only" onClick={() => setLeft(true)}>
-            <Icon name="menu" /> Фильтры
-          </button>
-          <span className="spacer" />
-          {right && (
-            <button className="btn btn--sm btn--blue drawer-toggle" onClick={() => setRight(true)}>
-              <Icon name="panel" /> {rightLabel}
-              {rightCount ? ` (${rightCount})` : ''}
-            </button>
-          )}
-        </div>
+        {slot && createPortal(toggles, slot)}
         {children}
       </main>
       {right && (
@@ -188,40 +335,6 @@ export function SearchBox({ value, onChange, placeholder = 'Поиск…' }: { 
     </label>
   );
 }
-
-const SECTIONS: { screen: Screen; icon: IconName }[] = [
-  { screen: 'expiry', icon: 'clock' },
-  { screen: 'journal', icon: 'list' },
-  { screen: 'alerts', icon: 'bell' },
-  { screen: 'dishes', icon: 'chef' },
-  { screen: 'settings', icon: 'gear' },
-];
-
-export function SectionNav() {
-  const { route, navigate } = useUi();
-  const { summary } = useLive();
-  return (
-    <>
-      <h3>Разделы</h3>
-      {SECTIONS.map((s) => (
-        <button
-          key={s.screen}
-          className={`side-btn side-btn--nav ${route.screen === s.screen ? 'is-active' : ''}`}
-          onClick={() => navigate(s.screen)}
-        >
-          <Icon name={s.icon} />
-          <span style={{ flex: 1 }}>{SCREEN_TITLES[s.screen]}</span>
-          {s.screen === 'alerts' && !!summary?.activeAlerts && <span className="count">{summary.activeAlerts}</span>}
-          {s.screen === 'expiry' && !!summary && summary.criticalBatches + summary.expiredBatches > 0 && (
-            <span className="count">{summary.criticalBatches + summary.expiredBatches}</span>
-          )}
-        </button>
-      ))}
-    </>
-  );
-}
-
-
 
 export function CategoryList({ value, onChange, counts }: { value: string; onChange: (c: string) => void; counts?: Record<string, number> }) {
   const { summary } = useLive();

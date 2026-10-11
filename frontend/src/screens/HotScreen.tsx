@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { HotOffer, HotOffers } from '../api/types';
 import { Icon } from '../components/Icon';
-import { SectionNav, Workspace } from '../components/Shell';
+import { Workspace } from '../components/Shell';
 import { Bar, Emoji, EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
 import { hoursLeft, qty } from '../lib/format';
 import { useQuery, useUi } from '../state/store';
@@ -41,7 +41,6 @@ export function HotScreen() {
           <button className="side-btn side-btn--nav" onClick={() => navigate('expiry')}>
             <Icon name="clock" /> <span style={{ flex: 1 }}>Сроки годности</span>
           </button>
-          <SectionNav />
         </div>
       }
       right={<OfferExplain offer={current} formula={q.data?.formula} />}

@@ -8,9 +8,9 @@ const media = () => window.matchMedia('(prefers-color-scheme: dark)');
 function read(): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY);
-    return v === 'light' || v === 'dark' ? v : 'system';
+    return v === 'light' || v === 'system' ? v : 'dark';
   } catch {
-    return 'system';
+    return 'dark';
   }
 }
 
@@ -20,7 +20,7 @@ function apply(choice: ThemeChoice) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#171c23' : '#ffffff');
 }
 
-/** Тема интерфейса: «как в системе» (по умолчанию), светлая или тёмная. Выбор хранится в браузере. */
+/** Тема интерфейса: тёмная (по умолчанию), светлая или «как в системе». Выбор хранится в браузере. */
 export function useTheme(): [ThemeChoice, () => void] {
   const [choice, setChoice] = useState<ThemeChoice>(read);
 
@@ -35,9 +35,9 @@ export function useTheme(): [ThemeChoice, () => void] {
 
   const cycle = useCallback(() => {
     setChoice((c) => {
-      const next: ThemeChoice = c === 'system' ? 'light' : c === 'light' ? 'dark' : 'system';
+      const next: ThemeChoice = c === 'dark' ? 'light' : c === 'light' ? 'system' : 'dark';
       try {
-        if (next === 'system') localStorage.removeItem(KEY);
+        if (next === 'dark') localStorage.removeItem(KEY);
         else localStorage.setItem(KEY, next);
       } catch {
         /* хранилище недоступно — тема действует до перезагрузки */
