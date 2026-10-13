@@ -22,7 +22,7 @@ export const SCREEN_TITLES: Record<Screen, string> = {
 const SCREEN_SUBTITLES: Record<Screen, string> = {
   stock: 'Остатки по продуктам и партиям, сроки годности и дефицит в реальном времени.',
   supplies: 'Приёмка поставок: каждая строка становится отдельной партией со своим сроком.',
-  orders: 'Проверка ингредиентов и списание по FEFO — сначала партии с ранним сроком.',
+  orders: 'Доступность блюд по остаткам продуктов и срокам годности.',
   'stop-list': 'Блюда, которые нельзя приготовить из доступных остатков, и прогноз новых стопов.',
   hot: 'Что продвигать, чтобы использовать продукты до окончания срока годности.',
   stats: 'Поступления, списания, отказы и прогноз дефицита по реальным данным склада.',
@@ -171,7 +171,8 @@ const PRIMARY_ACTION: Partial<Record<Screen, { label: string; icon: IconName; to
   stock: { label: 'Принять поставку', icon: 'truck', to: ['supplies', 'new'] },
   supplies: { label: 'Новая поставка', icon: 'plus', to: ['supplies', 'new'] },
   'stop-list': { label: 'Что заказать', icon: 'inbox', to: ['supplies', 'recommendations'] },
-  hot: { label: 'Оформить заказ', icon: 'receipt', to: ['orders'] },
+  orders: { label: 'Новый заказ', icon: 'plus', to: ['orders', 'new'] },
+  hot: { label: 'Новый заказ', icon: 'receipt', to: ['orders', 'new'] },
   expiry: { label: 'Что приготовить', icon: 'flame', to: ['hot'] },
 };
 
@@ -197,39 +198,6 @@ export function PageHeader() {
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-// ───────────────────────── Сводка ─────────────────────────
-
-export function Readouts() {
-  const { summary: s } = useLive();
-  const { navigate } = useUi();
-  if (!s) return <div className="stats-row" style={{ minHeight: 88 }} />;
-  const items: { icon: IconName; label: string; value: ReactNode; note: string; tone?: 'crit' | 'warn' | 'ok'; go: () => void }[] = [
-    { icon: 'box', label: 'В наличии', value: `${s.productsInStock}/${s.productCount}`, note: `${s.activeBatches} активных партий`, tone: 'ok', go: () => navigate('stock') },
-    { icon: 'clock', label: 'Истекает срок', value: s.expiringBatches + s.criticalBatches, note: `${s.criticalBatches} — критично`, tone: s.criticalBatches ? 'warn' : undefined, go: () => navigate('expiry') },
-    { icon: 'alert', label: 'Просрочено', value: s.expiredBatches, note: 'партий на складе', tone: s.expiredBatches ? 'crit' : undefined, go: () => navigate('expiry') },
-    { icon: 'stop', label: 'Стоп-лист', value: `${s.stopListCount}/${s.dishCount}`, note: 'блюд недоступно', tone: s.stopListCount ? 'crit' : undefined, go: () => navigate('stop-list') },
-    { icon: 'receipt', label: 'Заказы', value: s.ordersToday, note: `сегодня · отказов ${s.rejectedToday}`, tone: s.rejectedToday ? 'warn' : undefined, go: () => navigate('orders') },
-  ];
-  return (
-    <div className="stats-row" aria-label="Сводка склада">
-      {items.map((i) => (
-        <button key={i.label} className="statcard" onClick={i.go}>
-          <span className="statcard__head">
-            <span className="statcard__icon">
-              <Icon name={i.icon} />
-            </span>
-            {i.label}
-          </span>
-          <span className="statcard__body">
-            <span className="statcard__value">{i.value}</span>
-            <span className={`statcard__note ${i.tone ? `statcard__note--${i.tone}` : ''}`}>{i.note}</span>
-          </span>
-        </button>
-      ))}
     </div>
   );
 }

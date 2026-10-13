@@ -8,7 +8,7 @@ import { CategoryList, SearchBox, Workspace } from '../components/Shell';
 import { Emoji, EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
 import { dateShort, EXPIRY_LABEL, humanDate, qty, relative, unitLabel } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi } from '../state/store';
-import { DishCard } from './OrdersScreen';
+import { DishCard } from '../components/Cards';
 import { matches } from './StockScreen';
 
 // ───────────────────────── Сроки годности ─────────────────────────

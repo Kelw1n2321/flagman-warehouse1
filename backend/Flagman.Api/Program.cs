@@ -78,6 +78,7 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<FlagmanDbContext>();
         await db.Database.EnsureCreatedAsync();
+        await SchemaPatches.ApplyAsync(db, CancellationToken.None);
         if (!await db.Settings.AnyAsync())
         {
             db.Settings.Add(new Flagman.Api.Domain.WarehouseSettings());

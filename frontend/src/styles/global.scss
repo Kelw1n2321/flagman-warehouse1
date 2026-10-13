@@ -574,95 +574,6 @@ h3 {
   }
 }
 
-// ═════════════════════ Сводка (карточки) ═════════════════════
-.stats-row {
-  flex: none;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.statcard {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--surface);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
-  transition: border-color 0.12s;
-  &:hover {
-    border-color: var(--border-strong);
-  }
-
-  &__head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--text-2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  &__body {
-    display: flex;
-    flex-wrap: wrap; // если пояснение не помещается рядом с числом — уходит под него целиком
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 4px 8px;
-    min-width: 0;
-  }
-  &__icon {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--r-sm);
-    border: 1px solid var(--border);
-    background: var(--surface-2);
-    display: grid;
-    place-items: center;
-    color: var(--text-2);
-    flex: none;
-    svg {
-      width: 16px;
-      height: 16px;
-    }
-  }
-  &__value {
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-  }
-  &__note {
-    font-size: 11.5px;
-    white-space: nowrap;
-    color: var(--text-3);
-    padding: 2px 8px;
-    border-radius: var(--r-xs);
-    background: var(--surface-2);
-    &--ok {
-      color: var(--ok);
-      background: var(--ok-soft);
-    }
-    &--warn {
-      color: var(--warn);
-      background: var(--warn-soft);
-    }
-    &--crit {
-      color: var(--crit);
-      background: var(--crit-soft);
-    }
-  }
-}
-
 // ═════════════════════ Рабочая область экрана ═════════════════════
 .workspace {
   flex: 1;
@@ -724,6 +635,7 @@ h3 {
 
 .search {
   position: relative;
+  display: block;
   input {
     width: 100%;
     height: 40px;
@@ -902,20 +814,22 @@ textarea.input {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
   gap: 12px;
   align-content: start;
 }
 
-// ═════════════════════ Карточка продукта / партии / блюда ═════════════════════
-.pcard {
+// ═════════════════════ Карточка: продукт / партия / блюдо ═════════════════════
+// Одна конструкция для всех: заголовок, метка статуса, строки-плашки основных значений,
+// строки второго плана и (если нужно) действие или предупреждение внизу.
+.dcard {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-lg);
   text-align: left;
   color: var(--text);
   width: 100%;
@@ -931,71 +845,82 @@ textarea.input {
   &.is-selected {
     border-color: var(--primary);
   }
-  // Состояние карточки показывает метка статуса и цвет чисел; обводка у всех карточек одинаковая.
-  &--muted {
-    opacity: 0.88;
+  &--inactive {
+    opacity: 0.6;
   }
 
   &__head {
     display: flex;
-    gap: 12px;
+    flex-direction: column;
     align-items: flex-start;
-  }
-  &__icon {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--r);
-    border: 1px solid var(--border);
-    background: var(--surface-2);
-    display: grid;
-    place-items: center;
-    font-size: 23px;
-    flex: none;
-  }
-  &__title {
-    flex: 1;
+    gap: 2px;
     min-width: 0;
     .status {
       margin-top: 6px;
     }
   }
   &__name {
+    margin: 0;
+    font-size: 14.5px;
     font-weight: 600;
-    font-size: 15px;
-    line-height: 1.25;
-    overflow: hidden;
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-  &__sub {
-    font-size: 12.5px;
-    color: var(--text-3);
+    line-height: 1.3;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  &__metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+  &__sub {
+    font-size: 12px;
+    color: var(--text-3);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  &__rows {
+
+  &__stats {
+    margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    font-size: 13px;
+    gap: 3px;
   }
-  &__row {
+  &__stat {
     display: flex;
+    align-items: baseline;
     justify-content: space-between;
     gap: 8px;
+    padding: 5px 8px;
+    border-radius: var(--r-xs);
+    background: var(--surface-2);
+    border: 1px solid transparent;
+    dt {
+      font-size: 12.5px;
+      color: var(--text-2);
+    }
+    dd {
+      margin: 0;
+      font-size: 13.5px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+  }
+
+  &__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+    > div {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
     span:first-child {
       color: var(--text-3);
+      flex: none;
     }
     span:last-child {
-      color: var(--text);
-      font-weight: 500;
       text-align: right;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1003,66 +928,86 @@ textarea.input {
       font-variant-numeric: tabular-nums;
     }
   }
+  &__ings {
+    font-size: 12px;
+    color: var(--text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: -4px;
+  }
   &__alert {
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--crit);
     background: var(--crit-soft);
-    border-radius: var(--r-sm);
-    padding: 6px 10px;
+    border-radius: var(--r-xs);
+    padding: 5px 8px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  &__foot {
+  &__action {
     margin-top: auto;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 0 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: background-color 0.12s, border-color 0.12s;
+    svg {
+      width: 15px;
+      height: 15px;
+      flex: none;
+    }
+    &:hover {
+      background: var(--surface-3);
+      border-color: var(--border-strong);
+    }
+    &--blocked {
+      cursor: default;
+      color: var(--crit);
+      background: var(--crit-soft);
+      border-color: transparent;
+      display: block;
+      text-align: center;
+      line-height: 30px;
+      text-overflow: ellipsis;
+      &:hover {
+        background: var(--crit-soft);
+        border-color: transparent;
+      }
+    }
   }
 }
 
-.metric {
-  border-radius: var(--r);
-  padding: 8px 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  min-width: 0;
-
-  &__value {
-    display: block;
-    font-weight: 700;
-    font-size: 15.5px;
-    letter-spacing: -0.01em;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  &__label {
-    display: block;
-    margin-top: 1px;
-    font-size: 11.5px;
-    color: var(--text-3);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  &--ok .metric__value {
-    color: var(--ok);
-  }
-  &--warn .metric__value {
-    color: var(--warn);
-  }
-  &--crit .metric__value {
-    color: var(--crit);
-  }
-  &.is-zero .metric__value {
-    color: var(--text-3);
-  }
+// Цвет значения = состояние (зелёный норма, жёлтый предупреждение, красный критично).
+.tone-ok {
+  color: var(--ok);
+}
+.tone-warn {
+  color: var(--warn);
+}
+.tone-crit {
+  color: var(--crit);
+}
+.tone-neutral {
+  color: var(--text);
+}
+.tone-muted {
+  color: var(--text-3);
 }
 
-// Остаток изменился (заказ, поставка, списание) — один раз подсвечиваем, чтобы изменение заметили.
+// Остаток изменился (заказ, поставка, списание) — один раз подсвечиваем строку, чтобы изменение заметили.
 @keyframes changed {
   0%,
   45% {
@@ -1071,8 +1016,268 @@ textarea.input {
   }
 }
 
-.metric.is-changed {
+.dcard__stat.is-changed {
   animation: changed 1.6s ease-out;
+}
+
+// ═════════════════════ Экран «Заказы» ═════════════════════
+.counters {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  span + span {
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid var(--border-strong);
+  }
+}
+
+.cattabs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  > div {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    min-width: 0;
+  }
+  > div button {
+    height: 32px;
+    padding: 0 12px;
+    border: none;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: var(--text-2);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    &:hover {
+      color: var(--text);
+    }
+    &.is-active {
+      background: var(--surface-3);
+      color: var(--text);
+    }
+  }
+}
+
+.footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 2px 4px;
+  font-size: 12.5px;
+  color: var(--text-3);
+  svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+  }
+}
+
+.flip {
+  transform: scaleX(-1);
+}
+
+// Окно «Новый заказ»
+.field--lg {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  gap: 8px;
+  .hint {
+    font-size: 13px;
+  }
+}
+
+.order-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  > header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    span {
+      font-size: 12.5px;
+      color: var(--text-3);
+    }
+  }
+}
+
+.pick-list {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+  max-height: 218px;
+  overflow-y: auto;
+  &--plain {
+    max-height: none;
+    overflow: visible;
+  }
+  &__empty {
+    padding: 18px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-3);
+  }
+}
+
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px 9px 12px;
+  & + & {
+    border-top: 1px solid var(--border);
+  }
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    b {
+      font-size: 13.5px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    span {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+  }
+  &__info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    max-width: 50%;
+    b {
+      font-size: 12.5px;
+      font-weight: 500;
+    }
+    span {
+      font-size: 12px;
+      color: var(--text-3);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+  }
+}
+
+.iconbtn--sm {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+.iconbtn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  height: 30px;
+  flex: none;
+  button {
+    width: 28px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+    &:hover {
+      color: var(--text);
+    }
+  }
+  input {
+    width: 34px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+.order-empty {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+  padding: 30px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  b {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-2);
+  }
+  span {
+    font-size: 12.5px;
+    color: var(--text-3);
+  }
+}
+
+.order-total {
+  display: flex;
+  flex-direction: column;
+  small {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  b {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 // Метка состояния: точка + текст на мягком фоне своего цвета.
@@ -2350,12 +2555,7 @@ table.table {
       display: none;
     }
   }
-  .stats-row {
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: 160px;
-    overflow-x: auto;
-  }
+
   .workspace {
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 10px;

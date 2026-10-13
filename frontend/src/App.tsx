@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ProductModalHost } from './components/ProductModal';
-import { AppSidebar, BottomNav, PageHeader, Readouts, TopBar } from './components/Shell';
+import { AppSidebar, BottomNav, PageHeader, TopBar } from './components/Shell';
 import { ConfirmHost, Toasts } from './components/ui';
 import { HotScreen } from './screens/HotScreen';
 import { OrdersScreen } from './screens/OrdersScreen';
@@ -60,7 +60,6 @@ function Terminal() {
         <TopBar onMenu={() => setNavOpen(true)} />
         <div className="content">
           <PageHeader />
-          {route.screen === 'stock' && <Readouts />}
           {summaryError && !summary && (
             <div className="toast toast--error" role="alert">
               <span>Сервер недоступен: {summaryError}. Запустите бэкенд (dotnet run) — интерфейс переподключится автоматически.</span>

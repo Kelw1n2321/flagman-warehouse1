@@ -162,6 +162,8 @@ export interface Order {
   lines: { dishId: number; dishName: string; icon: string; servings: number }[];
   shortages: Shortage[];
   consumption: Consumption[] | null;
+  title: string | null;
+  comment: string | null;
 }
 
 export interface Requirement extends Shortage {

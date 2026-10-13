@@ -1,27 +1,49 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Batch, Product } from '../api/types';
-import { compact, EXPIRY_LABEL, humanDate, qty, relative, RISK_LABEL, riskTier, TIER_LABEL, unitLabel } from '../lib/format';
+import type { Batch, Dish, Product } from '../api/types';
+import { EXPIRY_LABEL, humanDate, qty, relative, RISK_LABEL, riskTier, TIER_LABEL } from '../lib/format';
 import { Icon } from './Icon';
-import { Emoji } from './ui';
 
-export type Tone = 'ok' | 'warn' | 'crit' | 'neutral';
+export type Tone = 'ok' | 'warn' | 'crit' | 'neutral' | 'muted';
+type Tier = 'ok' | 'attention' | 'critical' | 'info';
 
-/** Показатель карточки: значение + подпись; цвет дублирует смысл, а не заменяет его. */
-export function Metric({ label, value, tone, zero, title, changed }: { label: string; value: ReactNode; tone: Tone; zero?: boolean; title?: string; changed?: boolean }) {
+/** Метка состояния: точка + текст на мягком фоне своего цвета. */
+export function StatusPill({ tier, children }: { tier: Tier; children: ReactNode }) {
+  return <span className={`status status--${tier}`}>{children}</span>;
+}
+
+export interface Stat {
+  label: string;
+  value: ReactNode;
+  tone?: Tone;
+  title?: string;
+  changed?: boolean;
+}
+
+/** Строки-плашки «подпись … значение» — основная информация карточки. */
+export function Stats({ items }: { items: Stat[] }) {
   return (
-    <span className={`metric ${tone === 'neutral' ? '' : `metric--${tone}`} ${zero ? 'is-zero' : ''} ${changed ? 'is-changed' : ''}`} title={title}>
-      <span className="metric__value">{value}</span>
-      <span className="metric__label">{label}</span>
-    </span>
+    <dl className="dcard__stats">
+      {items.map((s) => (
+        <div key={s.label} className={`dcard__stat ${s.changed ? 'is-changed' : ''}`} title={s.title}>
+          <dt>{s.label}</dt>
+          <dd className={s.tone ? `tone-${s.tone}` : undefined}>{s.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
-export function StatusPill({ tier, children }: { tier: 'ok' | 'attention' | 'critical' | 'info'; children: ReactNode }) {
+/** Строки второго плана: «Партии», «Ближайший срок», «Ограничивает». */
+export function Meta({ rows }: { rows: [string, ReactNode, Tone?][] }) {
   return (
-    <span className={`status status--${tier}`}>
-      <Icon name={tier === 'ok' ? 'check' : tier === 'info' ? 'clock' : tier === 'attention' ? 'alert' : 'x'} />
-      {children}
-    </span>
+    <div className="dcard__meta">
+      {rows.map(([label, value, tone]) => (
+        <div key={label}>
+          <span>{label}</span>
+          <span className={tone ? `tone-${tone}` : undefined}>{value}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -39,120 +61,124 @@ function useChanged(value: number): boolean {
   return changed;
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+export function CardHead({ name, sub, tier, status }: { name: string; sub: string; tier: Tier; status: string }) {
   return (
-    <span className="pcard__row">
-      <span>{label}</span>
-      <span>{children}</span>
-    </span>
+    <div className="dcard__head">
+      <h3 className="dcard__name">{name}</h3>
+      <div className="dcard__sub">{sub}</div>
+      <StatusPill tier={tier}>{status}</StatusPill>
+    </div>
   );
 }
 
-export function ProductCard({
-  p,
-  tz,
-  now,
-  soonHours,
-  selected,
-  onOpen,
-}: {
-  p: Product;
-  tz: string;
-  now: Date;
-  soonHours: number;
-  selected?: boolean;
-  onOpen: () => void;
-}) {
+// ───────────────────────── Продукт ─────────────────────────
+
+export function ProductCard({ p, tz, now, selected, onOpen }: { p: Product; tz: string; now: Date; soonHours?: number; selected?: boolean; onOpen: () => void }) {
   const tier = riskTier(p.risk, p.blockedDishes.length > 0);
-  const atRisk = p.expiringSoon + p.expiringCritical;
-  const deficit = Math.max(0, p.minStock - p.available);
-  const u = unitLabel(p.unit);
-  const statusText = tier === 'ok' ? TIER_LABEL.ok : RISK_LABEL[p.risk === 'ok' ? 'low' : p.risk];
+  const status = tier === 'ok' ? TIER_LABEL.ok : RISK_LABEL[p.risk === 'ok' ? 'low' : p.risk];
   const changed = useChanged(p.available);
+  const availableTone: Tone = p.available <= 0 ? 'crit' : p.belowMinimum ? 'warn' : 'ok';
 
   return (
-    <button
-      className={`pcard pcard--clickable ${tier === 'critical' ? 'pcard--critical' : tier === 'attention' ? 'pcard--attention' : ''} ${selected ? 'is-selected' : ''}`}
-      onClick={onOpen}
-      aria-label={`${p.name}: доступно ${qty(p.available, p.unit, { small: false })}, ${statusText}`}
-    >
-      <span className="pcard__head">
-        <span className="pcard__icon">
-          <Emoji>{p.icon}</Emoji>
-        </span>
-        <span className="pcard__title">
-          <span className="pcard__name" style={{ display: 'block' }}>
-            {p.name}
-          </span>
-          <span className="pcard__sub" style={{ display: 'block' }}>
-            {p.category} · {p.sku}
-          </span>
-          <StatusPill tier={tier}>{statusText}</StatusPill>
-        </span>
-      </span>
-
-      <span className="pcard__metrics">
-        <Metric label="Доступно" value={`${compact(p.available)} ${u}`} tone={p.belowMinimum ? 'warn' : 'ok'} zero={p.available === 0} title={`Доступно: ${qty(p.available, p.unit)}`} changed={changed} />
-        <Metric label="Истекает" value={`${compact(atRisk)} ${u}`} tone="warn" zero={atRisk === 0} title={`Истекает в ближайшие ${soonHours} ч: ${qty(atRisk, p.unit)}`} />
-        {p.expired > 0 || !p.belowMinimum ? (
-          <Metric label="Просрочка" value={`${compact(p.expired)} ${u}`} tone="crit" zero={p.expired === 0} title={`Просрочено, не используется: ${qty(p.expired, p.unit)}`} />
-        ) : (
-          <Metric label="Нехватка" value={`${compact(deficit)} ${u}`} tone="crit" title={`Не хватает до минимального остатка ${qty(p.minStock, p.unit)}`} />
-        )}
-      </span>
-
-      <span className="pcard__rows">
-        <Row label="Партий">
-          {p.batchCount}
-          {p.total !== p.available && ` · всего ${qty(p.total, p.unit)}`}
-        </Row>
-        <Row label="Ближайший срок">{p.earliestExpiry ? humanDate(p.earliestExpiry, tz, now) : '—'}</Row>
-      </span>
+    <button className={`dcard dcard--clickable ${selected ? 'is-selected' : ''}`} onClick={onOpen} aria-label={`${p.name}: доступно ${qty(p.available, p.unit, { small: false })}, ${status}`}>
+      <CardHead name={p.name} sub={`${p.category} · ${p.sku}`} tier={tier} status={status} />
+      <Stats
+        items={[
+          { label: 'Доступно', value: qty(p.available, p.unit, { small: false }), tone: availableTone, changed, title: 'Пригодный остаток (без просрочки)' },
+          { label: 'Минимум', value: qty(p.minStock, p.unit, { small: false }), tone: 'neutral', title: 'Минимально допустимый остаток' },
+          { label: 'Просрочено', value: qty(p.expired, p.unit, { small: false }), tone: p.expired > 0 ? 'crit' : 'muted', title: 'Не используется для блюд' },
+        ]}
+      />
+      <Meta
+        rows={[
+          ['Партии', p.total !== p.available || p.batchCount > 1 ? `${p.batchCount} · всего ${qty(p.total, p.unit, { small: false })}` : p.batchCount],
+          ['Ближайший срок', p.earliestExpiry ? humanDate(p.earliestExpiry, tz, now) : '—'],
+        ]}
+      />
       {p.blockedDishes.length > 0 && (
-        <span className="pcard__alert" title={p.blockedDishes.join(', ')}>
+        <div className="dcard__alert" title={p.blockedDishes.join(', ')}>
           Стоп-лист: {p.blockedDishes.join(', ')}
-        </span>
+        </div>
       )}
     </button>
   );
 }
+
+// ───────────────────────── Партия ─────────────────────────
 
 const EXPIRY_TIER = { normal: 'ok', soon: 'attention', critical: 'critical', expired: 'critical' } as const;
 
 export function BatchCard({ b, tz, now, onOpen }: { b: Batch; tz: string; now: Date; onOpen: () => void }) {
   const expired = b.expiry === 'expired';
   return (
-    <button
-      className={`pcard pcard--clickable ${b.expiry === 'critical' || expired ? 'pcard--critical' : b.expiry === 'soon' ? 'pcard--attention' : ''}`}
-      onClick={onOpen}
-      aria-label={`Партия ${b.code} ${b.productName}`}
-    >
-      <span className="pcard__head">
-        <span className="pcard__icon">
-          <Emoji>{b.icon}</Emoji>
-        </span>
-        <span className="pcard__title">
-          <span className="pcard__name" style={{ display: 'block' }}>
-            {b.productName}
-          </span>
-          <span className="pcard__sub" style={{ display: 'block' }}>
-            Партия {b.code}
-          </span>
-          <StatusPill tier={EXPIRY_TIER[b.expiry]}>{EXPIRY_LABEL[b.expiry]}</StatusPill>
-        </span>
-      </span>
-      <span className="pcard__metrics">
-        <Metric label="Остаток" value={`${compact(b.quantityRemaining)} ${unitLabel(b.unit)}`} tone={expired ? 'crit' : 'ok'} />
-        <Metric label={expired ? 'Истёк' : 'Осталось'} value={relative(b.hoursLeft).replace('через ', '')} tone={b.expiry === 'normal' ? 'neutral' : b.expiry === 'soon' ? 'warn' : 'crit'} />
-        <Metric label="FEFO" value={b.fefoRank ? `№${b.fefoRank}` : '—'} tone="neutral" zero={!b.fefoRank} />
-      </span>
-      <span className="pcard__rows">
-        <Row label="Поставка">{b.supplyNumber}</Row>
-        <Row label="Принята">
-          {humanDate(b.receivedAt, tz, now)} · {qty(b.quantityReceived, b.unit)}
-        </Row>
-        <Row label="Годна до">{humanDate(b.expiresAt, tz, now)}</Row>
-      </span>
+    <button className="dcard dcard--clickable" onClick={onOpen} aria-label={`Партия ${b.code} ${b.productName}`}>
+      <CardHead name={b.productName} sub={`Партия ${b.code}`} tier={EXPIRY_TIER[b.expiry]} status={EXPIRY_LABEL[b.expiry]} />
+      <Stats
+        items={[
+          { label: 'Остаток', value: qty(b.quantityRemaining, b.unit, { small: false }), tone: expired ? 'crit' : 'ok' },
+          { label: expired ? 'Истёк' : 'Осталось', value: relative(b.hoursLeft).replace('через ', ''), tone: b.expiry === 'normal' ? 'neutral' : b.expiry === 'soon' ? 'warn' : 'crit' },
+          { label: 'Очередь FEFO', value: b.fefoRank ? `№${b.fefoRank}` : '—', tone: b.fefoRank === 1 ? 'ok' : 'muted' },
+        ]}
+      />
+      <Meta
+        rows={[
+          ['Поставка', b.supplyNumber],
+          ['Годна до', humanDate(b.expiresAt, tz, now)],
+        ]}
+      />
     </button>
+  );
+}
+
+// ───────────────────────── Блюдо ─────────────────────────
+
+/** Короткий состав для карточки: первые слова названий ингредиентов. */
+const shortIngredients = (d: Dish) => d.ingredients.map((i) => i.name.split(/[ (]/)[0]).join(', ');
+
+export function dishTier(d: Dish): { tier: Tier; status: string } {
+  if (!d.available) return { tier: 'critical', status: 'Стоп-лист' };
+  if (d.ingredients.some((i) => i.atRisk)) return { tier: 'attention', status: 'Проверить' };
+  return { tier: 'ok', status: 'Доступно' };
+}
+
+export function DishCard({ d, onAdd, onOpen, inOrder }: { d: Dish; onAdd?: () => void; onOpen?: () => void; inOrder?: number }) {
+  const missing = d.ingredients.filter((i) => i.missing > 0);
+  const risky = d.ingredients.filter((i) => i.atRisk).length;
+  const { tier, status } = dishTier(d);
+  const limiting = d.available ? d.limitingProductName ?? '—' : missing[0]?.name ?? '—';
+  const clickable = !!onOpen && !onAdd;
+  const Tag = clickable ? 'button' : 'article';
+
+  return (
+    <Tag className={`dcard ${clickable ? 'dcard--clickable' : ''} ${d.isActive ? '' : 'dcard--inactive'}`} onClick={clickable ? onOpen : undefined}>
+      <CardHead name={d.name} sub={`${d.category} · ${d.ingredients.length} ингр.${d.isActive ? '' : ' · не в меню'}`} tier={tier} status={status} />
+      <Stats
+        items={[
+          { label: 'Порции', value: d.maxServings, tone: d.maxServings > 0 ? 'ok' : 'crit', title: 'Сколько порций можно приготовить из доступных остатков' },
+          { label: 'Не хватает', value: missing.length, tone: missing.length ? 'crit' : 'muted', title: missing.map((m) => m.name).join(', ') || 'Все ингредиенты в наличии' },
+          { label: 'Истекает', value: risky, tone: risky ? 'warn' : 'muted', title: 'Ингредиентов с истекающим сроком годности' },
+        ]}
+      />
+      <Meta rows={[['Ограничивает', limiting, d.available ? undefined : 'crit']]} />
+      <div className="dcard__ings" title={d.ingredients.map((i) => `${i.name} — ${qty(i.perServing, i.unit)}`).join(', ')}>
+        {shortIngredients(d)}
+      </div>
+      {onAdd &&
+        (d.available ? (
+          <button className="dcard__action" onClick={onAdd} aria-label={`Добавить «${d.name}» в заказ`}>
+            <Icon name="plus" /> В заказ{inOrder ? ` · ${inOrder}` : ''}
+          </button>
+        ) : (
+          <div className="dcard__action dcard__action--blocked" title={`Не хватает: ${missing.map((m) => m.name).join(', ')}`}>
+            Нет: {missing[0]?.name.toLowerCase()}
+            {missing.length > 1 ? ` +${missing.length - 1}` : ''}
+          </div>
+        ))}
+      {clickable && (
+        <span className="dcard__action">
+          <Icon name="edit" /> Изменить рецептуру
+        </span>
+      )}
+    </Tag>
   );
 }

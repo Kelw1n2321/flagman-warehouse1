@@ -38,7 +38,8 @@ public sealed record ConsumptionDto(int ProductId, string ProductName, string Un
 
 public sealed record OrderDto(
     Guid Id, string Number, DateTime CreatedAt, string Status, string? RejectionReason, string Source,
-    IReadOnlyList<OrderLineDto> Lines, IReadOnlyList<ShortageDto> Shortages, IReadOnlyList<ConsumptionDto>? Consumption);
+    IReadOnlyList<OrderLineDto> Lines, IReadOnlyList<ShortageDto> Shortages, IReadOnlyList<ConsumptionDto>? Consumption,
+    string? Title, string? Comment);
 
 public sealed record RequirementDto(int ProductId, string ProductName, string Unit, decimal Required, decimal Available, decimal Missing, decimal ExpiredExcluded,
     IReadOnlyList<ConsumptionDto> FefoPlan);

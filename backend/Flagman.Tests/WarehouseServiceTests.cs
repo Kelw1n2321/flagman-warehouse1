@@ -94,6 +94,33 @@ public sealed class WarehouseServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Order_StoresTrimmedTitleAndComment()
+    {
+        var rice = await _host.AddProductAsync("RIC");
+        var dish = await _host.AddDishAsync("Рис", (rice, 0.1m));
+        await _host.ReceiveAsync((rice, 1, 100));
+
+        var outcome = await _host.With((w, _) => w.PlaceOrderAsync([new OrderLineInput(dish, 1)], "test", default, title: "  Стол 5 ", comment: "   "));
+
+        Assert.Equal("Стол 5", outcome.Order.Title);
+        Assert.Null(outcome.Order.Comment); // пустой комментарий не сохраняется
+    }
+
+    [Fact]
+    public async Task Order_RejectsTooLongTitle_WithoutTouchingStock()
+    {
+        var rice = await _host.AddProductAsync("RIC");
+        var dish = await _host.AddDishAsync("Рис", (rice, 0.1m));
+        await _host.ReceiveAsync((rice, 1, 100));
+
+        var ex = await Assert.ThrowsAsync<DomainException>(() =>
+            _host.With((w, _) => w.PlaceOrderAsync([new OrderLineInput(dish, 1)], "test", default, title: new string('x', OrderLimits.Title + 1))));
+
+        Assert.Equal(400, ex.Status);
+        Assert.Equal(1m, (await _host.BatchesAsync(rice)).Single().QuantityRemaining);
+    }
+
+    [Fact]
     public async Task StopList_UpdatesAfterConsumption_AndClearsAfterSupply()
     {
         var fish = await _host.AddProductAsync("FSH");

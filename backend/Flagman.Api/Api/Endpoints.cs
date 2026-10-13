@@ -8,7 +8,7 @@ namespace Flagman.Api.Api;
 
 public sealed record AdjustRequest(decimal Quantity, string? Reason);
 public sealed record WriteOffRequest(decimal? Quantity, string? Reason);
-public sealed record OrderRequest(IReadOnlyList<OrderLineInput>? Lines);
+public sealed record OrderRequest(IReadOnlyList<OrderLineInput>? Lines, string? Title = null, string? Comment = null);
 public sealed record AckRequest(IReadOnlyList<int>? Ids);
 public sealed record MinStockRequest(decimal MinStock);
 
@@ -134,7 +134,7 @@ public static class Endpoints
             await q.GetOrderAsync(id, ct) is { } o ? Results.Ok(o) : Results.Problem(statusCode: 404, title: "Заказ не найден"));
         api.MapPost("/orders", async (OrderRequest r, WarehouseService w, QueryService q, CancellationToken ct) =>
         {
-            var outcome = await w.PlaceOrderAsync(r.Lines, "manual", ct);
+            var outcome = await w.PlaceOrderAsync(r.Lines, "manual", ct, title: r.Title, comment: r.Comment);
             var dto = await q.GetOrderAsync(outcome.Order.Id, ct);
             // Отклонённый заказ тоже сохраняется (для статистики), но клиенту возвращается 409 с причиной.
             return outcome.Order.Status == OrderStatus.Completed

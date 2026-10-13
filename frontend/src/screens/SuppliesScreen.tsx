@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { Product, Recommendation, Supply } from '../api/types';
+import { CardHead, Stats } from '../components/Cards';
 import { ControlPanel } from '../components/ControlPanel';
 import { Icon } from '../components/Icon';
 import { SearchBox, Workspace } from '../components/Shell';
-import { Emoji, EmptyState, ErrorState, Loadable, LoadingBar, Modal, Tag } from '../components/ui';
+import { EmptyState, ErrorState, Loadable, LoadingBar, Modal, Tag } from '../components/ui';
 import { dateShort, EXPIRY_LABEL, hoursLeft, humanDate, qty, relative, toLocalInput, unitLabel } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi, type SupplyDraftLine } from '../state/store';
 import { matches } from './StockScreen';
@@ -321,43 +322,19 @@ function ProductPicker({ search }: { search: string }) {
                 {list.map((p) => {
                   const inDraft = lines.filter((l) => l.productId === p.id).length;
                   return (
-                    <div key={p.id} className="pcard">
-                      <span className="pcard__head">
-                        <span className="pcard__icon">
-                          <Emoji>{p.icon}</Emoji>
-                        </span>
-                        <span className="pcard__title">
-                          <span className="pcard__name" style={{ display: 'block' }}>
-                            {p.name}
-                          </span>
-                          <span className="pcard__sub" style={{ display: 'block' }}>
-                            {p.category} · {unitLabel(p.unit)}
-                          </span>
-                        </span>
-                      </span>
-                      <span className="pcard__rows">
-                        <span className="pcard__row">
-                          <span>Доступно сейчас</span>
-                          <span>{qty(p.available, p.unit)}</span>
-                        </span>
-                        <span className="pcard__row">
-                          <span>Минимальный остаток</span>
-                          <span>{qty(p.minStock, p.unit)}</span>
-                        </span>
-                        <span className="pcard__row">
-                          <span>Срок хранения</span>
-                          <span>{p.defaultShelfLifeHours ? hoursLeft(p.defaultShelfLifeHours) : '—'}</span>
-                        </span>
-                      </span>
-                      <span className="pcard__foot">
-                        <span className="muted" style={{ fontSize: 12.5 }}>
-                          {inDraft ? `В поставке: ${inDraft} парт.` : ''}
-                        </span>
-                        <button className="btn btn--sm btn--blue" onClick={() => add(p)} aria-label={`Добавить ${p.name} в поставку`}>
-                          <Icon name="plus" /> Добавить партию
-                        </button>
-                      </span>
-                    </div>
+                    <article key={p.id} className="dcard">
+                      <CardHead name={p.name} sub={`${p.category} · ${p.sku}`} tier={p.available > 0 ? (p.belowMinimum ? 'attention' : 'ok') : 'critical'} status={p.available > 0 ? (p.belowMinimum ? 'Мало остатка' : 'В наличии') : 'Нет в наличии'} />
+                      <Stats
+                        items={[
+                          { label: 'Доступно', value: qty(p.available, p.unit, { small: false }), tone: p.available <= 0 ? 'crit' : p.belowMinimum ? 'warn' : 'ok' },
+                          { label: 'Минимум', value: qty(p.minStock, p.unit, { small: false }), tone: 'neutral' },
+                          { label: 'Срок хранения', value: p.defaultShelfLifeHours ? hoursLeft(p.defaultShelfLifeHours) : '—', tone: 'neutral' },
+                        ]}
+                      />
+                      <button className="dcard__action" onClick={() => add(p)} aria-label={`Добавить ${p.name} в поставку`}>
+                        <Icon name="plus" /> {inDraft ? `Ещё партия · в поставке ${inDraft}` : 'Добавить партию'}
+                      </button>
+                    </article>
                   );
                 })}
               </div>

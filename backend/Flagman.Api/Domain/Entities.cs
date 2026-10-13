@@ -87,6 +87,10 @@ public sealed class Order
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string Number { get; set; }
+    /// <summary>Название от официанта: «Стол 5», «Навынос» — необязательно.</summary>
+    public string? Title { get; set; }
+    /// <summary>Пожелания к приготовлению — необязательно.</summary>
+    public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
     public OrderStatus Status { get; set; }
     public string? RejectionReason { get; set; }

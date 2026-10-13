@@ -287,7 +287,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         new(o.Id, o.Number, o.CreatedAt, o.Status == OrderStatus.Completed ? "completed" : "rejected", o.RejectionReason, o.Source,
             o.Lines.Select(l => new OrderLineDto(l.DishId, l.DishName, icons.GetValueOrDefault(l.DishId, "🍽️"), l.Servings)).ToList(),
             o.Shortages.Select(s => new ShortageDto(s.ProductId, s.ProductName, s.Unit, s.Required, s.Available, s.Missing, s.ExpiredExcluded)).ToList(),
-            consumption);
+            consumption, o.Title, o.Comment);
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersAsync(string? status, string? search, int limit, CancellationToken ct)
     {
@@ -299,6 +299,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         IEnumerable<Order> items = list;
         if (!string.IsNullOrWhiteSpace(search))
             items = items.Where(o => o.Number.Contains(search, StringComparison.OrdinalIgnoreCase)
+                                     || (o.Title?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
                                      || o.Lines.Any(l => l.DishName.Contains(search, StringComparison.OrdinalIgnoreCase)));
         return items.Select(o => ToOrderDto(o, icons, null)).ToList();
     }

@@ -8,6 +8,12 @@ namespace Flagman.Api.Services;
 public sealed record SupplyLineInput(int ProductId, decimal Quantity, DateTime? ExpiresAt, string? ExpiresAtLocal, int? ShelfLifeHours);
 public sealed record CreateSupplyCommand(string? SupplyNumber, string? Supplier, string? Note, IReadOnlyList<SupplyLineInput>? Lines, bool ReceiveNow);
 public sealed record OrderLineInput(int DishId, int Servings);
+
+public static class OrderLimits
+{
+    public const int Title = 80;
+    public const int Comment = 500;
+}
 public sealed record DishIngredientInput(int ProductId, decimal QuantityPerServing);
 public sealed record UpdateDishCommand(string? Name, string? Description, string? Icon, string? Category, bool? IsActive, IReadOnlyList<DishIngredientInput>? Ingredients);
 public sealed record CreateProductCommand(string? Name, string? Category, string? Unit, decimal MinStock, int? DefaultShelfLifeHours, string? Icon, string? Sku);
@@ -188,10 +194,17 @@ public sealed class WarehouseService(
 
     // ───────────────────────── Заказы ─────────────────────────
 
-    public Task<OrderOutcome> PlaceOrderAsync(IReadOnlyList<OrderLineInput>? lines, string source, CancellationToken ct, DateTime? at = null) =>
+    public Task<OrderOutcome> PlaceOrderAsync(IReadOnlyList<OrderLineInput>? lines, string source, CancellationToken ct, DateTime? at = null,
+        string? title = null, string? comment = null) =>
         ExecuteAsync("order.placed", at, async now =>
         {
             var merged = ValidateOrderLines(lines);
+            title = string.IsNullOrWhiteSpace(title) ? null : title.Trim();
+            comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
+            if (title?.Length > OrderLimits.Title)
+                throw DomainException.Invalid("title", $"Название заказа — не длиннее {OrderLimits.Title} символов.");
+            if (comment?.Length > OrderLimits.Comment)
+                throw DomainException.Invalid("comment", $"Комментарий — не длиннее {OrderLimits.Comment} символов.");
             var dishIds = merged.Keys.ToList();
             var dishes = await db.Dishes.AsNoTracking().Include(d => d.Ingredients)
                 .Where(d => dishIds.Contains(d.Id)).ToDictionaryAsync(d => d.Id, ct);
@@ -209,6 +222,8 @@ public sealed class WarehouseService(
             var order = new Order
             {
                 Number = await NextOrderNumberAsync(ct),
+                Title = title,
+                Comment = comment,
                 CreatedAt = now,
                 Source = source,
                 Lines = orderLines.Select(l => new OrderLine { DishId = l.Dish.Id, DishName = l.Dish.Name, Servings = l.Servings }).ToList(),

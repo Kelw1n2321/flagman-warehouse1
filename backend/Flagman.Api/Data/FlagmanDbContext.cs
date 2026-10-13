@@ -1,4 +1,5 @@
 using Flagman.Api.Domain;
+using Flagman.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -66,6 +67,8 @@ public sealed class FlagmanDbContext(DbContextOptions<FlagmanDbContext> options)
         {
             e.HasIndex(o => o.Number).IsUnique();
             e.HasIndex(o => o.CreatedAt);
+            e.Property(o => o.Title).HasMaxLength(OrderLimits.Title);
+            e.Property(o => o.Comment).HasMaxLength(OrderLimits.Comment);
             e.HasMany(o => o.Lines).WithOne().HasForeignKey(l => l.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(o => o.Shortages).WithOne().HasForeignKey(l => l.OrderId).OnDelete(DeleteBehavior.Cascade);
         });

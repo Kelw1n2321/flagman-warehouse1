@@ -69,6 +69,7 @@ public static class DemoSeeder
     {
         var db = sp.GetRequiredService<FlagmanDbContext>();
         await db.Database.EnsureCreatedAsync(ct);
+        await SchemaPatches.ApplyAsync(db, ct);
         if (await db.Products.AnyAsync(ct)) return;
         await SeedAsync(sp, ct);
     }

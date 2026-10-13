@@ -1,204 +1,210 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api/client';
-import type { Dish, Order, OrderCheck } from '../api/types';
-import { Metric, StatusPill } from '../components/Cards';
+import type { Dish, Order } from '../api/types';
+import { DishCard, dishTier, StatusPill } from '../components/Cards';
 import { Icon } from '../components/Icon';
 import { SearchBox, Workspace } from '../components/Shell';
-import { Emoji, EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
-import { dateShort, humanDate, qty } from '../lib/format';
-import { useLive, useNow, useQuery, useTz, useUi } from '../state/store';
-import { matches } from './StockScreen';
+import { EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
+import { dateShort, humanDate, plural, qty } from '../lib/format';
+import { useLive, useNow, useQuery, useTz, useUi, type QueryResult } from '../state/store';
 
 type Lines = Record<number, number>;
+type Sort = 'risk' | 'servings' | 'name';
+
+const TITLE_MAX = 80;
+const COMMENT_MAX = 500;
 
 export function OrdersScreen() {
-  const { route, navigate } = useUi();
-  const [search, setSearch] = useState('');
-  const [view, setView] = useState<'menu' | 'history'>(route.param ? 'history' : 'menu');
-  const [status, setStatus] = useState('');
-  const [category, setCategory] = useState('');
-  const [lines, setLines] = useState<Lines>({});
+  const { route, navigate, toast } = useUi();
   const dishes = useQuery<Dish[]>('/dishes');
-  const count = Object.values(lines).reduce((a, b) => a + b, 0);
-  const cats = [...new Set((dishes.data ?? []).map((d) => d.category))].sort();
+  const [lines, setLines] = useState<Lines>({});
+  const [title, setTitle] = useState('');
+  const [comment, setComment] = useState('');
+  const [result, setResult] = useState<Order | null>(null);
 
-  const add = (id: number, delta: number) =>
+  const view = route.param === 'history' ? 'history' : 'menu';
+  const modalOpen = route.param === 'new';
+  const detailId = route.param && route.param !== 'new' && route.param !== 'history' ? route.param : null;
+
+  const setServings = (id: number, servings: number) =>
     setLines((l) => {
-      const next = Math.max(0, Math.min(200, (l[id] ?? 0) + delta));
       const { [id]: _, ...rest } = l;
-      return next ? { ...rest, [id]: next } : rest;
+      const n = Math.max(0, Math.min(200, servings));
+      return n ? { ...rest, [id]: n } : rest;
     });
+  const add = (id: number, delta: number) => setServings(id, (lines[id] ?? 0) + delta);
+  const reset = () => (setLines({}), setTitle(''), setComment(''));
 
   return (
-    <Workspace
-      rightLabel="Заказ"
-      rightCount={count || undefined}
-      sidebar={
-        <>
-          <SearchBox value={search} onChange={setSearch} placeholder={view === 'menu' ? 'Найти блюдо…' : 'Номер или блюдо…'} />
-          <div className="sidebar__scroll">
-            <h3>Заказы</h3>
-            <button className={`side-btn side-btn--nav ${view === 'menu' ? 'is-active' : ''}`} onClick={() => setView('menu')}>
-              <Icon name="chef" /> <span style={{ flex: 1 }}>Новый заказ</span>
-            </button>
-            <button className={`side-btn side-btn--nav ${view === 'history' ? 'is-active' : ''}`} onClick={() => setView('history')}>
-              <Icon name="list" /> <span style={{ flex: 1 }}>История заказов</span>
-            </button>
-            {view === 'menu' ? (
-              <>
-                <h3>Разделы меню</h3>
-                <button className={`side-btn ${category === '' ? 'is-active' : ''}`} onClick={() => setCategory('')}>
-                  <span style={{ flex: 1, textAlign: 'left' }}>Всё меню</span>
-                </button>
-                {cats.map((c) => (
-                  <button key={c} className={`side-btn ${category === c ? 'is-active' : ''}`} onClick={() => setCategory(c)}>
-                    <span style={{ flex: 1, textAlign: 'left' }}>{c}</span>
-                  </button>
-                ))}
-              </>
-            ) : (
-              <>
-                <h3>Статус</h3>
-                {(
-                  [
-                    ['', 'Все'],
-                    ['completed', 'Выполнены'],
-                    ['rejected', 'Отклонены'],
-                  ] as const
-                ).map(([k, label]) => (
-                  <button key={k} className={`side-btn ${status === k ? 'is-active' : ''}`} onClick={() => setStatus(k)}>
-                    <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-        </>
-      }
-      right={<OrderComposer lines={lines} dishes={dishes.data ?? []} add={add} clear={() => setLines({})} />}
-    >
+    <Workspace>
       {view === 'menu' ? (
-        <>
-          <div className="toolbar">
-            <span className="muted">Добавьте блюда в заказ — система проверит остатки и спишет ингредиенты по FEFO.</span>
-          </div>
-          <LoadingBar active={dishes.loading} />
-          <div className="tray">
-            <Loadable q={dishes} skeleton={<LoadingGrid count={12} />}>
-              {(all) => {
-                const list = all.filter((d) => (!category || d.category === category) && matches(d, search));
-                if (list.length === 0) return <EmptyState icon="chef" title="Блюда не найдены" />;
-                return (
-                  <div className="grid">
-                    {list.map((d) => (
-                      <DishCard key={d.id} d={d} inOrder={lines[d.id] ?? 0} onAdd={() => add(d.id, 1)} />
-                    ))}
-                  </div>
-                );
-              }}
-            </Loadable>
-          </div>
-        </>
+        <DishBoard q={dishes} lines={lines} onAdd={(id) => (add(id, 1), navigate('orders', 'new'))} />
       ) : (
-        <OrderHistory search={search} status={status} />
+        <OrderHistory />
       )}
-      {route.param && <OrderDetail id={route.param} onClose={() => navigate('orders')} />}
+      {modalOpen && (
+        <NewOrderModal
+          dishes={dishes.data ?? []}
+          lines={lines}
+          add={add}
+          setServings={setServings}
+          title={title}
+          setTitle={setTitle}
+          comment={comment}
+          setComment={setComment}
+          onCancel={() => (reset(), navigate('orders'))}
+          onClose={() => navigate('orders')}
+          onDone={(order) => {
+            setResult(order);
+            if (order.status === 'completed') {
+              reset();
+              toast(`Заказ ${order.number} создан, ингредиенты списаны по FEFO`, 'ok');
+            } else toast(`Заказ ${order.number} отклонён: не хватает ингредиентов`, 'error');
+            navigate('orders');
+          }}
+        />
+      )}
+      {detailId && <OrderDetail id={detailId} onClose={() => navigate('orders', 'history')} />}
+      {result && <OrderResult order={result} onClose={() => setResult(null)} />}
     </Workspace>
   );
 }
 
-export function DishCard({ d, inOrder, onAdd, onOpen }: { d: Dish; inOrder?: number; onAdd?: () => void; onOpen?: () => void }) {
-  const missing = d.ingredients.filter((i) => i.missing > 0);
-  const risky = d.ingredients.filter((i) => i.atRisk).length;
-  const Tagname = onOpen ? 'button' : 'div';
-  const tier = !d.available ? 'critical' : d.hotLevel ? 'attention' : 'ok';
+// ───────────────────────── Панель блюд ─────────────────────────
+
+function DishBoard({ q, lines, onAdd }: { q: QueryResult<Dish[]>; lines: Lines; onAdd: (id: number) => void }) {
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('');
+  const [sort, setSort] = useState<Sort>('risk');
+  const { navigate } = useUi();
+  const all = q.data ?? [];
+  const cats = [...new Set(all.map((d) => d.category))].sort((a, b) => a.localeCompare(b, 'ru'));
+  const t = search.trim().toLowerCase();
+  const risky = (d: Dish) => d.ingredients.filter((i) => i.atRisk).length;
+
+  const list = all
+    .filter((d) => !category || d.category === category)
+    .filter((d) => !t || d.name.toLowerCase().includes(t) || d.ingredients.some((i) => i.name.toLowerCase().includes(t)))
+    .sort((a, b) =>
+      sort === 'name'
+        ? a.name.localeCompare(b.name, 'ru')
+        : sort === 'servings'
+          ? a.maxServings - b.maxServings || a.name.localeCompare(b.name, 'ru')
+          : risky(b) - risky(a) || a.name.localeCompare(b.name, 'ru'),
+    );
+  const toCheck = all.filter((d) => dishTier(d).tier === 'attention').length;
+  const stopped = all.filter((d) => !d.available).length;
+
   return (
-    <Tagname
-      className={`pcard ${onOpen ? 'pcard--clickable' : ''} ${tier === 'critical' ? 'pcard--critical pcard--muted' : ''}`}
-      onClick={onOpen}
-    >
-      <span className="pcard__head">
-        <span className="pcard__icon">
-          <Emoji>{d.icon}</Emoji>
-        </span>
-        <span className="pcard__title">
-          <span className="pcard__name" style={{ display: 'block' }}>
-            {d.name}
+    <>
+      <div className="toolbar">
+        <div style={{ width: 280, maxWidth: '100%' }}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Найти блюдо или ингредиент" />
+        </div>
+        <select className="select" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Сортировка">
+          <option value="risk">По риску сроков</option>
+          <option value="servings">По доступным порциям</option>
+          <option value="name">По названию</option>
+        </select>
+        <span className="spacer" />
+        <div className="counters" aria-label="Сводка по блюдам">
+          <span>
+            {all.length} {plural(all.length, 'блюдо', 'блюда', 'блюд')}
           </span>
-          <span className="pcard__sub" style={{ display: 'block' }}>
-            {d.category} · {d.ingredients.length} ингр.
-          </span>
-          <StatusPill tier={tier}>{!d.available ? 'Стоп-лист' : d.hotLevel ? 'Продвигать' : 'Доступно'}</StatusPill>
-        </span>
-      </span>
-      <span className="pcard__metrics">
-        <Metric label="Порций" value={d.maxServings} tone={d.maxServings ? 'ok' : 'crit'} />
-        <Metric label="Не хватает" value={missing.length} tone="crit" zero={!missing.length} title={missing.length ? `Не хватает: ${missing.map((m) => m.name).join(', ')}` : 'Все ингредиенты в наличии'} />
-        <Metric label="Истекает" value={risky} tone="warn" zero={!risky} title="Ингредиентов с истекающим сроком" />
-      </span>
-      <span className="pcard__rows">
-        {d.available ? (
-          <span className="pcard__row">
-            <span>Ограничивает</span>
-            <span>{d.limitingProductName ?? '—'}</span>
-          </span>
-        ) : (
-          <span className="pcard__alert" title={missing.map((m) => m.name).join(', ')}>
-            Нет: {missing.map((m) => m.name).join(', ')}
-          </span>
-        )}
-        <span className="pcard__row" title={d.ingredients.map((i) => `${i.name} ${qty(i.perServing, i.unit)}`).join(', ')}>
-          <span>Состав</span>
-          <span>{d.ingredients.map((i) => i.name.split(' ')[0]).join(', ')}</span>
-        </span>
-      </span>
-      {onAdd && (
-        <span className="pcard__foot">
-          <span className="muted" style={{ fontSize: 12.5 }}>
-            {inOrder ? `В заказе: ${inOrder} порц.` : ''}
-          </span>
-          <button className="btn btn--sm btn--blue" onClick={onAdd} aria-label={`Добавить «${d.name}» в заказ`}>
-            <Icon name="plus" /> В заказ
-          </button>
-        </span>
-      )}
-    </Tagname>
+          <span className="tone-warn">{toCheck} проверить</span>
+          <span className="tone-crit">{stopped} в стоп-листе</span>
+        </div>
+      </div>
+      <div className="cattabs">
+        <div role="tablist" aria-label="Разделы меню">
+          {['', ...cats].map((c) => (
+            <button key={c || 'all'} role="tab" aria-selected={category === c} className={category === c ? 'is-active' : ''} onClick={() => setCategory(c)}>
+              {c || 'Все блюда'}
+            </button>
+          ))}
+        </div>
+        <button className="btn btn--sm btn--dark" onClick={() => navigate('orders', 'history')}>
+          <Icon name="list" /> История заказов
+        </button>
+      </div>
+      <LoadingBar active={q.loading} />
+      <div className="tray">
+        <Loadable q={q} skeleton={<LoadingGrid count={8} />}>
+          {() =>
+            list.length === 0 ? (
+              <EmptyState icon="search" title="Блюда не найдены" text="Измените поиск или раздел меню." />
+            ) : (
+              <>
+                <div className="grid">
+                  {list.map((d) => (
+                    <DishCard key={d.id} d={d} inOrder={lines[d.id]} onAdd={() => onAdd(d.id)} />
+                  ))}
+                </div>
+                <p className="footnote">
+                  <Icon name="alert" /> Порции — оценка по остаткам. Истекающие продукты учитываются по FEFO: сначала с ближайшим сроком годности.
+                </p>
+              </>
+            )
+          }
+        </Loadable>
+      </div>
+    </>
   );
 }
 
-function OrderComposer({ lines, dishes, add, clear }: { lines: Lines; dishes: Dish[]; add: (id: number, d: number) => void; clear: () => void }) {
-  const [check, setCheck] = useState<OrderCheck | null>(null);
-  const [result, setResult] = useState<Order | null>(null);
+// ───────────────────────── Окно «Новый заказ» ─────────────────────────
+
+function NewOrderModal({
+  dishes,
+  lines,
+  add,
+  setServings,
+  title,
+  setTitle,
+  comment,
+  setComment,
+  onCancel,
+  onClose,
+  onDone,
+}: {
+  dishes: Dish[];
+  lines: Lines;
+  add: (id: number, delta: number) => void;
+  setServings: (id: number, n: number) => void;
+  title: string;
+  setTitle: (v: string) => void;
+  comment: string;
+  setComment: (v: string) => void;
+  onCancel: () => void;
+  onClose: () => void;
+  onDone: (o: Order) => void;
+}) {
+  const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
-  const { toast } = useUi();
+  const [error, setError] = useState<string | null>(null);
   const { bump } = useLive();
-  const entries = Object.entries(lines).map(([id, n]) => ({ dish: dishes.find((d) => d.id === Number(id)), servings: n }));
-  const payload = { lines: Object.entries(lines).map(([dishId, servings]) => ({ dishId: Number(dishId), servings })) };
+  const t = search.trim().toLowerCase();
+  const list = dishes
+    .filter((d) => !t || d.name.toLowerCase().includes(t) || d.ingredients.some((i) => i.name.toLowerCase().includes(t)))
+    .sort((a, b) => Number(b.available) - Number(a.available) || a.name.localeCompare(b.name, 'ru'));
+  const entries = Object.entries(lines)
+    .map(([id, n]) => ({ dish: dishes.find((d) => d.id === Number(id)), servings: n }))
+    .filter((e): e is { dish: Dish; servings: number } => !!e.dish);
   const total = entries.reduce((a, e) => a + e.servings, 0);
 
-  const doCheck = async () => {
+  const create = async () => {
     setBusy(true);
+    setError(null);
     try {
-      setCheck(await api.post<OrderCheck>('/dishes/availability-check', payload));
+      const order = await api.post<Order>('/orders', {
+        title: title.trim() || null,
+        comment: comment.trim() || null,
+        lines: entries.map((e) => ({ dishId: e.dish.id, servings: e.servings })),
+      });
+      onDone(order);
     } catch (e) {
-      toast(e instanceof ApiError ? e.detail : 'Проверка не выполнена', 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const place = async () => {
-    setBusy(true);
-    try {
-      const order = await api.post<Order>('/orders', payload);
-      setResult(order);
-      clear();
-      toast(`Заказ ${order.number} принят, ингредиенты списаны`, 'ok');
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && e.body && (e.body as Order).number) {
-        setResult(e.body as Order);
-        toast(`Заказ ${(e.body as Order).number} отклонён: не хватает ингредиентов`, 'error');
-      } else toast(e instanceof ApiError ? e.detail : 'Заказ не оформлен', 'error');
+      if (e instanceof ApiError && e.status === 409 && (e.body as Order | null)?.number) onDone(e.body as Order);
+      else setError(e instanceof ApiError ? e.detail : 'Заказ не создан. Повторите попытку.');
     } finally {
       setBusy(false);
       bump();
@@ -206,121 +212,139 @@ function OrderComposer({ lines, dishes, add, clear }: { lines: Lines; dishes: Di
   };
 
   return (
-    <>
-      <div className="rightbar__title">
-        <h2>Заказ</h2>
-        {total > 0 && (
-          <button className="btn btn--sm btn--red" onClick={clear} aria-label="Очистить заказ">
-            <Icon name="minus" />
-          </button>
-        )}
-      </div>
-      <div className="rightbar__body">
-        {entries.length === 0 ? (
-          <EmptyState icon="list" title="Заказ пуст" text="Добавьте блюда из меню кнопкой «В заказ»." />
-        ) : (
-          entries.map(({ dish, servings }) =>
-            dish ? (
-              <div key={dish.id} className={`risk risk--${dish.available && dish.maxServings >= servings ? 'ok' : 'critical'}`} style={{ padding: 8 }}>
-                <div className="row" style={{ flexWrap: 'nowrap' }}>
-                  <span className="emoji" style={{ fontSize: 26 }}>
-                    {dish.icon}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <b>{dish.name}</b>
-                    <div className="risk__meta">
-                      {dish.maxServings >= servings ? `Хватает (до ${dish.maxServings} порц.)` : dish.available ? `Отдельно можно максимум ${dish.maxServings} порц.` : 'В стоп-листе'}
-                    </div>
-                  </div>
-                  <button className="btn btn--sm" onClick={() => add(dish.id, -1)} aria-label="Меньше">
-                    <Icon name="minus" />
-                  </button>
-                  <b className="pill-num" style={{ minWidth: 22, textAlign: 'center' }}>
-                    {servings}
-                  </b>
-                  <button className="btn btn--sm" onClick={() => add(dish.id, 1)} aria-label="Больше">
-                    <Icon name="plus" />
-                  </button>
-                </div>
-              </div>
-            ) : null,
-          )
-        )}
-      </div>
-      <div className="rightbar__foot" style={{ flexWrap: 'wrap' }}>
-        <span>
-          <span className="big">{total}</span> <span className="muted">порц.</span>
-        </span>
-        <span className="row" style={{ gap: 8 }}>
-          <button className="btn" disabled={busy || total === 0} onClick={doCheck}>
-            Проверить
-          </button>
-          <button className="btn btn--lg btn--blue" disabled={busy || total === 0} onClick={place}>
-            Оформить
-          </button>
-        </span>
-      </div>
-      {check && <CheckDialog check={check} onClose={() => setCheck(null)} onPlace={() => (setCheck(null), place())} />}
-      {result && <OrderResult order={result} onClose={() => setResult(null)} />}
-    </>
-  );
-}
-
-function CheckDialog({ check, onClose, onPlace }: { check: OrderCheck; onClose: () => void; onPlace: () => void }) {
-  const tz = useTz();
-  return (
     <Modal
-      title={check.canFulfill ? 'Заказ можно выполнить' : 'Ингредиентов не хватает'}
-      onClose={onClose}
       size="md"
+      onClose={onClose}
+      title={
+        <span className="row" style={{ gap: 10 }}>
+          Новый заказ <span className="tag">Черновик</span>
+        </span>
+      }
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Закрыть
+          <div className="order-total">
+            <small>Всего порций</small>
+            <b>{total}</b>
+          </div>
+          <span className="spacer" />
+          <button className="btn btn--dark" onClick={onCancel}>
+            Отмена
           </button>
-          {check.canFulfill && (
-            <button className="btn btn--blue" onClick={onPlace}>
-              Оформить и списать
-            </button>
-          )}
+          <button className="btn btn--blue" disabled={busy || total === 0} onClick={create}>
+            {busy ? 'Создаём…' : 'Создать заказ'}
+          </button>
         </>
       }
     >
-      {check.reason && <p style={{ margin: 0, color: 'var(--crit)' }}>{check.reason}</p>}
-      <div className="sheet table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Ингредиент</th>
-              <th className="num">Нужно</th>
-              <th className="num">Доступно</th>
-              <th className="num">Не хватает</th>
-              <th>План списания (FEFO)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {check.requirements.map((r) => (
-              <tr key={r.productId} className={r.missing > 0 ? 'row--expired' : ''}>
-                <td>
-                  <b>{r.productName}</b>
-                  {r.expiredExcluded > 0 && <div className="ink-muted">+ {qty(r.expiredExcluded, r.unit)} просрочено, не учитывается</div>}
-                </td>
-                <td className="num">{qty(r.required, r.unit)}</td>
-                <td className="num">{qty(r.available, r.unit)}</td>
-                <td className="num">{r.missing > 0 ? <b style={{ color: 'var(--crit)' }}>{qty(r.missing, r.unit)}</b> : '—'}</td>
-                <td style={{ fontSize: 12.5 }}>
-                  {r.fefoPlan.length
-                    ? r.fefoPlan.map((c) => `${c.batchCode} (до ${c.batchExpiresAt ? dateShort(c.batchExpiresAt, tz) : '—'}): ${qty(c.quantity, c.unit)}`).join('; ')
-                    : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <label className="field field--lg">
+        Название заказа
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например, стол 5 или заказ навынос" maxLength={TITLE_MAX} />
+      </label>
+
+      <section className="order-section">
+        <header>
+          <h3>Добавить блюда</h3>
+          <span>
+            {dishes.length} {plural(dishes.length, 'блюдо', 'блюда', 'блюд')}
+          </span>
+        </header>
+        <SearchBox value={search} onChange={setSearch} placeholder="Найти блюдо" />
+        <div className="pick-list" role="list">
+          {list.length === 0 && <div className="pick-list__empty">Блюдо не найдено</div>}
+          {list.map((d) => {
+            const risk = d.ingredients.filter((i) => i.atRisk).length;
+            return (
+              <div key={d.id} className="pick-row" role="listitem">
+                <div className="pick-row__main">
+                  <b>{d.name}</b>
+                  <span>{d.category}</span>
+                </div>
+                <div className="pick-row__info">
+                  {d.available ? (
+                    <b className="tone-ok">
+                      {d.maxServings} {plural(d.maxServings, 'порция', 'порции', 'порций')}
+                    </b>
+                  ) : (
+                    <b className="tone-crit">Стоп-лист</b>
+                  )}
+                  {d.available ? (
+                    risk ? <span className="tone-warn">Истекает: {risk}</span> : <span>Без риска сроков</span>
+                  ) : (
+                    <span className="tone-crit">Нет: {d.ingredients.filter((i) => i.missing > 0).map((i) => i.name.toLowerCase()).join(', ')}</span>
+                  )}
+                </div>
+                <button className="iconbtn iconbtn--sm" disabled={!d.available} onClick={() => add(d.id, 1)} aria-label={`Добавить «${d.name}»`} title={d.available ? 'Добавить порцию' : 'Блюдо в стоп-листе'}>
+                  <Icon name="plus" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="order-section">
+        <header>
+          <h3>Состав заказа</h3>
+          <span>
+            {entries.length} {plural(entries.length, 'позиция', 'позиции', 'позиций')}
+          </span>
+        </header>
+        {entries.length === 0 ? (
+          <div className="order-empty">
+            <b>В заказе пока нет блюд</b>
+            <span>Добавьте блюда из списка выше</span>
+          </div>
+        ) : (
+          <div className="pick-list pick-list--plain" role="list">
+            {entries.map(({ dish, servings }) => {
+              const over = servings > dish.maxServings;
+              return (
+                <div key={dish.id} className="pick-row" role="listitem">
+                  <div className="pick-row__main">
+                    <b>{dish.name}</b>
+                    <span className={over ? 'tone-crit' : undefined}>
+                      {over ? `Хватит только на ${dish.maxServings} ${plural(dish.maxServings, 'порцию', 'порции', 'порций')}` : `Доступно до ${dish.maxServings}`}
+                    </span>
+                  </div>
+                  <div className="stepper" aria-label={`Порций: ${servings}`}>
+                    <button onClick={() => add(dish.id, -1)} aria-label="Меньше">
+                      <Icon name="minus" />
+                    </button>
+                    <input
+                      value={servings}
+                      inputMode="numeric"
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                        if (!Number.isNaN(n)) setServings(dish.id, n);
+                      }}
+                      aria-label="Количество порций"
+                    />
+                    <button onClick={() => add(dish.id, 1)} aria-label="Больше">
+                      <Icon name="plus" />
+                    </button>
+                  </div>
+                  <button className="iconbtn iconbtn--sm iconbtn--ghost" onClick={() => setServings(dish.id, 0)} aria-label={`Убрать «${dish.name}»`} title="Убрать из заказа">
+                    <Icon name="x" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <label className="field field--lg">
+        <span>
+          Комментарий <span className="hint">· необязательно</span>
+        </span>
+        <textarea className="input" rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Пожелания к приготовлению" maxLength={COMMENT_MAX} />
+      </label>
+      {error && <div className="error-text">{error}</div>}
     </Modal>
   );
 }
+
+// ───────────────────────── Результат, детали, история ─────────────────────────
 
 function OrderResult({ order, onClose }: { order: Order; onClose: () => void }) {
   return (
@@ -337,14 +361,26 @@ function OrderBody({ order }: { order: Order }) {
     <>
       <div className="sheet">
         <dl className="kv">
+          {order.title && (
+            <>
+              <dt>Название</dt>
+              <dd>{order.title}</dd>
+            </>
+          )}
           <dt>Создан</dt>
           <dd>{dateShort(order.createdAt, tz)}</dd>
           <dt>Статус</dt>
           <dd>
-            <Tag kind={order.status}>{order.status === 'completed' ? 'Выполнен' : 'Отклонён'}</Tag>
+            <StatusPill tier={order.status === 'completed' ? 'ok' : 'critical'}>{order.status === 'completed' ? 'Выполнен' : 'Отклонён'}</StatusPill>
           </dd>
           <dt>Блюда</dt>
           <dd>{order.lines.map((l) => `${l.dishName} × ${l.servings}`).join(', ')}</dd>
+          {order.comment && (
+            <>
+              <dt>Комментарий</dt>
+              <dd>{order.comment}</dd>
+            </>
+          )}
           <dt>Источник</dt>
           <dd>{order.source === 'manual' ? 'Касса / вручную' : order.source === 'generator' ? 'Генератор событий' : 'Демо-история'}</dd>
         </dl>
@@ -416,26 +452,50 @@ function OrderDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const q = useQuery<Order>(`/orders/${id}`);
   return (
     <Modal title={q.data ? `Заказ ${q.data.number}` : 'Заказ'} icon="receipt" onClose={onClose} size="md">
-      <Loadable q={q} dark>
-        {(o) => <OrderBody order={o} />}
-      </Loadable>
+      <Loadable q={q}>{(o) => <OrderBody order={o} />}</Loadable>
     </Modal>
   );
 }
 
-function OrderHistory({ search, status }: { search: string; status: string }) {
+function OrderHistory() {
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
   const q = useQuery<Order[]>(`/orders?limit=300${status ? `&status=${status}` : ''}`);
   const { navigate } = useUi();
   const tz = useTz();
   const now = useNow();
+  const t = search.trim().toLowerCase();
+
   return (
     <>
+      <div className="toolbar">
+        <button className="btn btn--sm btn--dark" onClick={() => navigate('orders')}>
+          <Icon name="chevron" className="flip" /> К блюдам
+        </button>
+        <div style={{ width: 300, maxWidth: '100%' }}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Номер, название или блюдо" />
+        </div>
+        <div className="seg" role="group" aria-label="Статус заказа">
+          {(
+            [
+              ['', 'Все'],
+              ['completed', 'Выполнены'],
+              ['rejected', 'Отклонены'],
+            ] as const
+          ).map(([k, label]) => (
+            <button key={k} className={status === k ? 'is-active' : ''} onClick={() => setStatus(k)} aria-pressed={status === k}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <LoadingBar active={q.loading} />
       <div className="tray">
         <Loadable q={q}>
           {(all) => {
-            const t = search.trim().toLowerCase();
-            const list = all.filter((o) => !t || o.number.toLowerCase().includes(t) || o.lines.some((l) => l.dishName.toLowerCase().includes(t)));
+            const list = all.filter(
+              (o) => !t || o.number.toLowerCase().includes(t) || (o.title ?? '').toLowerCase().includes(t) || o.lines.some((l) => l.dishName.toLowerCase().includes(t)),
+            );
             if (list.length === 0) return <EmptyState icon="receipt" title="Заказов не найдено" />;
             return (
               <div className="table-wrap">
@@ -454,6 +514,7 @@ function OrderHistory({ search, status }: { search: string; status: string }) {
                       <tr key={o.id} className={`is-clickable ${o.status === 'rejected' ? 'row--soon' : ''}`} onClick={() => navigate('orders', o.id)}>
                         <td>
                           <b>{o.number}</b>
+                          {o.title && <span className="uid" style={{ fontFamily: 'inherit' }}>{o.title}</span>}
                         </td>
                         <td style={{ whiteSpace: 'nowrap' }}>{humanDate(o.createdAt, tz, now)}</td>
                         <td>{o.lines.map((l) => `${l.dishName} × ${l.servings}`).join(', ')}</td>
