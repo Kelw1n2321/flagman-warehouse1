@@ -1,35 +1,35 @@
 // Дизайн-система «Флагман»: тёмный рабочий дашборд (по умолчанию) и светлый вариант на тех же токенах.
-// Правила — в DESIGN.md. Цвет несёт смысл: зелёный — норма, жёлтый — предупреждение, красный — критично,
-// синий — действие и выделение.
+// Правила — в DESIGN.md. Интерфейс монохромный: действие и выделение — светлым (в тёмной теме) или
+// тёмным (в светлой). Цвет несёт только смысл: зелёный — норма, жёлтый — предупреждение, красный — критично.
 
 // ═════════════════════ Токены ═════════════════════
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0c0c0e;
-  --nav-bg: #0f0f11;
-  --surface: #151518;
-  --surface-2: #1c1c20;
-  --surface-3: #25252a;
-  --border: #26262b;
-  --border-strong: #35353c;
-  --text: #f3f3f5;
-  --text-2: #a7a7b0;
-  --text-3: #6e6e78;
+  --bg: #0d0d0f;
+  --nav-bg: #111113;
+  --surface: #161618;
+  --surface-2: #1c1c1f;
+  --surface-3: #252528;
+  --border: #252528;
+  --border-strong: #333337;
+  --text: #ededef;
+  --text-2: #a1a1a8;
+  --text-3: #6b6b73;
 
-  --primary: #2f7ff0;
-  --primary-hover: #4a90f5;
-  --primary-soft: rgba(47, 127, 240, 0.15);
-  --primary-ink: #78afff;
-  --on-primary: #ffffff;
+  --primary: #e8e8ea;
+  --primary-hover: #ffffff;
+  --primary-soft: rgba(255, 255, 255, 0.07);
+  --primary-ink: #ededef;
+  --on-primary: #111113;
 
-  --ok: #3ccf86;
-  --ok-soft: rgba(60, 207, 134, 0.12);
-  --warn: #f2b53c;
-  --warn-soft: rgba(242, 181, 60, 0.13);
-  --crit: #f45b5b;
-  --crit-soft: rgba(244, 91, 91, 0.13);
-  --crit-line: rgba(244, 91, 91, 0.4);
+  --ok: #4cc38a;
+  --ok-soft: rgba(76, 195, 138, 0.1);
+  --warn: #e3b04b;
+  --warn-soft: rgba(227, 176, 75, 0.11);
+  --crit: #e5615f;
+  --crit-soft: rgba(229, 97, 95, 0.12);
+  --crit-line: rgba(229, 97, 95, 0.35);
   --info: #a7a7b0;
   --info-soft: #25252a;
 
@@ -58,10 +58,11 @@
   --text-2: #545a66;
   --text-3: #6f7580;
 
-  --primary: #2a6fe0;
-  --primary-hover: #1f5fc9;
-  --primary-soft: rgba(42, 111, 224, 0.1);
-  --primary-ink: #1f5fc9;
+  --primary: #18181b;
+  --primary-hover: #2e2e33;
+  --primary-soft: rgba(0, 0, 0, 0.06);
+  --primary-ink: #18181b;
+  --on-primary: #f5f5f6;
 
   --ok: #15803d;
   --ok-soft: #e7f6ec;
@@ -95,7 +96,7 @@
   --r-lg: 14px;
   --r-xl: 16px;
 
-  --nav: 272px;
+  --nav: 260px;
   --filters: 240px;
   --rightbar: 340px;
 }
@@ -207,20 +208,23 @@ h3 {
     padding: 0 4px 12px;
   }
   &__logo {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--r);
-    background: var(--primary);
-    color: var(--on-primary);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
     display: grid;
     place-items: center;
-    font-weight: 700;
-    font-size: 17px;
     flex: none;
+    svg {
+      width: 17px;
+      height: 17px;
+    }
   }
   &__name {
-    font-size: 19px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     letter-spacing: -0.02em;
     flex: 1;
   }
@@ -251,42 +255,29 @@ h3 {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 14px;
-  }
-  &__group {
-    display: flex;
-    flex-direction: column;
     gap: 2px;
-  }
-  &__title {
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-3);
-    padding: 0 12px 6px;
   }
 
   &__item {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 12px;
-    height: 40px;
-    padding: 0 12px;
-    border: 1px solid transparent;
-    border-radius: var(--r);
+    gap: 11px;
+    height: 38px;
+    padding: 0 10px;
+    border: none;
+    border-radius: var(--r-sm);
     background: transparent;
     color: var(--text-2);
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 500;
     cursor: pointer;
     text-align: left;
     transition: color 0.12s, background-color 0.12s;
 
     svg {
-      width: 19px;
-      height: 19px;
+      width: 18px;
+      height: 18px;
       flex: none;
     }
     &:hover {
@@ -294,20 +285,9 @@ h3 {
       color: var(--text);
     }
     &.is-active {
-      background: var(--surface-2);
-      border-color: var(--border-strong);
+      background: var(--surface-3);
       color: var(--text);
       font-weight: 600;
-      &::after {
-        content: '';
-        position: absolute;
-        right: -13px;
-        top: 10px;
-        bottom: 10px;
-        width: 3px;
-        border-radius: 3px;
-        background: var(--primary);
-      }
     }
   }
   &__label {
@@ -322,42 +302,70 @@ h3 {
     height: 20px;
     padding: 0 6px;
     border-radius: var(--r-xs);
-    background: var(--surface-3);
-    color: var(--text-2);
-    font-size: 11.5px;
-    font-weight: 600;
+    background: transparent;
+    color: var(--text-3);
+    font-size: 12px;
+    font-weight: 500;
     display: grid;
     place-items: center;
     font-variant-numeric: tabular-nums;
     &--crit {
-      background: var(--crit-soft);
       color: var(--crit);
     }
     &--warn {
-      background: var(--warn-soft);
       color: var(--warn);
     }
   }
 
-  &__status {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: var(--r-lg);
-    padding: 12px;
+  &__bottom {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 10px;
+    padding-top: 10px;
+  }
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 6px 2px;
+    border-top: 1px solid var(--border);
+    min-width: 0;
+  }
+  &__avatar {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--text);
+    font-size: 11.5px;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+    flex: none;
+    .dot {
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 9px;
+      height: 9px;
+      border: 2px solid var(--nav-bg);
+      box-sizing: content-box;
+    }
+  }
+  &__who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+    b {
+      font-size: 13px;
+      font-weight: 600;
+    }
     span {
       font-size: 12px;
       color: var(--text-3);
-      line-height: 1.35;
     }
-  }
-  &__status-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13.5px;
   }
 }
 
@@ -371,24 +379,15 @@ h3 {
   }
   .appnav__name,
   .appnav__label,
-  .appnav__status span {
+  .appnav__who {
     display: none;
   }
   .appnav__collapse svg {
     transform: rotate(180deg);
   }
-  .appnav__title {
-    font-size: 0;
-    padding: 0;
-    margin: 0 10px 6px;
-    border-top: 1px solid var(--border);
-  }
   .appnav__item {
     justify-content: center;
     padding: 0;
-    &.is-active::after {
-      right: -11px;
-    }
   }
   .appnav__badge {
     position: absolute;
@@ -399,12 +398,10 @@ h3 {
     font-size: 10px;
     padding: 0 4px;
   }
-  .appnav__status {
-    padding: 10px;
-    align-items: center;
-    b {
-      display: none;
-    }
+  .appnav__user {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
@@ -422,31 +419,6 @@ h3 {
   }
 }
 
-// ═════════════════════ Верхняя панель ═════════════════════
-.topbar {
-  height: 64px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
-
-  &__right {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  &__slot {
-    display: flex;
-    gap: 8px;
-    &:empty {
-      display: none;
-    }
-  }
-}
-
 .btn__count {
   min-width: 18px;
   height: 18px;
@@ -460,31 +432,10 @@ h3 {
   place-items: center;
 }
 
-.crumbs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13.5px;
-  color: var(--text-3);
-  min-width: 0;
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-  b {
-    color: var(--text);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  span {
-    white-space: nowrap;
-  }
-}
-
 .iconbtn {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--r);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -525,11 +476,12 @@ h3 {
 .pagehead {
   flex: none;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 4px;
 
-  > div:first-child {
+  &__title {
+    flex: 1;
     min-width: 0;
   }
 
@@ -548,14 +500,21 @@ h3 {
   }
   &__actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
     flex: none;
+  }
+  &__slot {
+    display: flex;
+    gap: 8px;
+    &:empty {
+      display: none;
+    }
   }
 }
 
 .datepill {
-  height: 40px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1176,11 +1135,13 @@ textarea.input {
     }
     span {
       font-size: 12px;
-      color: var(--text-3);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       max-width: 100%;
+      &:not([class]) {
+        color: var(--text-3);
+      }
     }
   }
 }
@@ -1284,12 +1245,12 @@ textarea.input {
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: var(--r-xs);
-  font-size: 12px;
-  font-weight: 600;
+  gap: 5px;
+  height: 20px;
+  padding: 0 7px 0 6px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
   white-space: nowrap;
   flex: none;
   svg {
@@ -1297,9 +1258,9 @@ textarea.input {
   }
   &::before {
     content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
+    width: 3px;
+    height: 9px;
+    border-radius: 1px;
     background: currentColor;
   }
   &--ok {
@@ -1384,6 +1345,12 @@ textarea.input {
     &:hover:not(:disabled) {
       background: var(--primary-hover);
       border-color: var(--primary-hover);
+    }
+    &:disabled {
+      opacity: 1;
+      background: var(--surface-2);
+      border-color: var(--surface-2);
+      color: var(--text-3);
     }
   }
   // Подтверждение операции со складом (принять поставку).
@@ -2442,23 +2409,13 @@ table.table {
     }
     .appnav__name,
     .appnav__label,
-    .appnav__status span,
-    .appnav__status b,
+    .appnav__who,
     .appnav__collapse {
       display: none;
-    }
-    .appnav__title {
-      font-size: 0;
-      padding: 0;
-      margin: 0 10px 6px;
-      border-top: 1px solid var(--border);
     }
     .appnav__item {
       justify-content: center;
       padding: 0;
-      &.is-active::after {
-        right: -11px;
-      }
     }
     .appnav__badge {
       position: absolute;
@@ -2469,9 +2426,10 @@ table.table {
       font-size: 10px;
       padding: 0 4px;
     }
-    .appnav__status {
-      padding: 10px;
-      align-items: center;
+    .appnav__user {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
     }
   }
 }
@@ -2499,20 +2457,15 @@ table.table {
       flex-direction: row;
     }
     .appnav__name,
-    .appnav__label,
-    .appnav__status span,
-    .appnav__status b {
+    .appnav__label {
       display: initial;
     }
-    .appnav__title {
-      font-size: 11px;
-      padding: 0 12px 6px;
-      margin: 0;
-      border-top: none;
+    .appnav__who {
+      display: flex;
     }
     .appnav__item {
       justify-content: flex-start;
-      padding: 0 12px;
+      padding: 0 10px;
     }
     .appnav__badge {
       position: static;
@@ -2521,9 +2474,9 @@ table.table {
       font-size: 11.5px;
       padding: 0 6px;
     }
-    .appnav__status {
-      align-items: flex-start;
-      padding: 12px;
+    .appnav__user {
+      justify-content: flex-start;
+      padding: 12px 6px 2px;
     }
   }
   .mobile-only {
@@ -2532,21 +2485,17 @@ table.table {
   .btn.mobile-only {
     display: inline-flex !important;
   }
-  .topbar {
-    height: 56px;
-    padding: 0 14px;
-  }
-  .crumbs span,
-  .crumbs svg {
-    display: none;
-  }
   .content {
     padding: 14px 14px 78px;
     gap: 12px;
   }
   .pagehead {
+    align-items: center;
     h1 {
       font-size: 21px;
+    }
+    .pagehead__label {
+      display: none;
     }
     p {
       display: none;
@@ -2605,4 +2554,23 @@ table.table {
     animation: none !important;
     transition: none !important;
   }
+}
+
+// Список поставок: состав — не больше двух строк, идентификатор — одной строкой с многоточием.
+.cell-products {
+  min-width: 220px;
+  max-width: 340px;
+  span {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+.table .uid {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

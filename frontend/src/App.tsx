@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ProductModalHost } from './components/ProductModal';
-import { AppSidebar, BottomNav, PageHeader, TopBar } from './components/Shell';
+import { AppSidebar, BottomNav, PageHeader } from './components/Shell';
 import { ConfirmHost, Toasts } from './components/ui';
 import { HotScreen } from './screens/HotScreen';
 import { OrdersScreen } from './screens/OrdersScreen';
@@ -57,9 +57,8 @@ function Terminal() {
       {navOpen && <div className="scrim" onClick={() => setNavOpen(false)} />}
       <AppSidebar collapsed={collapsed} onCollapse={toggleCollapsed} open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="screen">
-        <TopBar onMenu={() => setNavOpen(true)} />
         <div className="content">
-          <PageHeader />
+          <PageHeader onMenu={() => setNavOpen(true)} />
           {summaryError && !summary && (
             <div className="toast toast--error" role="alert">
               <span>Сервер недоступен: {summaryError}. Запустите бэкенд (dotnet run) — интерфейс переподключится автоматически.</span>

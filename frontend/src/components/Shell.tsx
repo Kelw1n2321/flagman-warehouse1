@@ -20,7 +20,7 @@ export const SCREEN_TITLES: Record<Screen, string> = {
 };
 
 const SCREEN_SUBTITLES: Record<Screen, string> = {
-  stock: 'Остатки по продуктам и партиям, сроки годности и дефицит в реальном времени.',
+  stock: 'Остатки, сроки годности и дефицит в реальном времени.',
   supplies: 'Приёмка поставок: каждая строка становится отдельной партией со своим сроком.',
   orders: 'Доступность блюд по остаткам продуктов и срокам годности.',
   'stop-list': 'Блюда, которые нельзя приготовить из доступных остатков, и прогноз новых стопов.',
@@ -40,33 +40,18 @@ interface NavItem {
   icon: IconName;
 }
 
-const GROUPS: { title: string; items: NavItem[] }[] = [
-  {
-    title: 'Основное',
-    items: [
-      { screen: 'stock', icon: 'box' },
-      { screen: 'supplies', icon: 'truck' },
-      { screen: 'orders', icon: 'receipt' },
-      { screen: 'stop-list', icon: 'stop' },
-      { screen: 'hot', icon: 'flame' },
-      { screen: 'stats', icon: 'chart' },
-    ],
-  },
-  {
-    title: 'Контроль',
-    items: [
-      { screen: 'expiry', icon: 'clock' },
-      { screen: 'journal', icon: 'list' },
-      { screen: 'alerts', icon: 'bell' },
-    ],
-  },
-  {
-    title: 'Справочники',
-    items: [
-      { screen: 'dishes', icon: 'chef' },
-      { screen: 'settings', icon: 'gear' },
-    ],
-  },
+// Плоский список разделов; «Настройки» прижаты к низу меню.
+const NAV: NavItem[] = [
+  { screen: 'stock', icon: 'box' },
+  { screen: 'orders', icon: 'receipt' },
+  { screen: 'supplies', icon: 'truck' },
+  { screen: 'dishes', icon: 'chef' },
+  { screen: 'stop-list', icon: 'stop' },
+  { screen: 'hot', icon: 'flame' },
+  { screen: 'expiry', icon: 'clock' },
+  { screen: 'alerts', icon: 'bell' },
+  { screen: 'journal', icon: 'list' },
+  { screen: 'stats', icon: 'chart' },
 ];
 
 function useBadges(): Partial<Record<Screen, { value: number; tone: 'crit' | 'warn' | 'info' }>> {
@@ -84,75 +69,93 @@ export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed
   const { route, navigate } = useUi();
   const { summary, connected } = useLive();
   const badges = useBadges();
+  const storage = summary?.settings.mode === 'postgres' ? 'PostgreSQL' : 'демо-база SQLite';
+
+  const item = (n: NavItem) => {
+    const b = badges[n.screen];
+    const active = route.screen === n.screen;
+    return (
+      <button
+        key={n.screen}
+        className={`appnav__item ${active ? 'is-active' : ''}`}
+        onClick={() => (navigate(n.screen), onClose())}
+        aria-current={active ? 'page' : undefined}
+        title={collapsed ? SCREEN_TITLES[n.screen] : undefined}
+      >
+        <Icon name={n.icon} />
+        <span className="appnav__label">{SCREEN_TITLES[n.screen]}</span>
+        {!!b?.value && <span className={`appnav__badge appnav__badge--${b.tone}`}>{b.value}</span>}
+      </button>
+    );
+  };
 
   return (
     <aside className={`appnav ${open ? 'is-open' : ''}`} aria-label="Разделы">
       <div className="appnav__brand">
         <span className="appnav__logo" aria-hidden>
-          Ф
+          <Icon name="layers" />
         </span>
         <span className="appnav__name">Флагман</span>
         <button className="appnav__collapse" onClick={onCollapse} aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'} title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}>
           <Icon name="chevrons" />
         </button>
       </div>
-      <nav className="appnav__scroll">
-        {GROUPS.map((g) => (
-          <div key={g.title} className="appnav__group">
-            <div className="appnav__title">{g.title}</div>
-            {g.items.map((n) => {
-              const b = badges[n.screen];
-              const active = route.screen === n.screen;
-              return (
-                <button
-                  key={n.screen}
-                  className={`appnav__item ${active ? 'is-active' : ''}`}
-                  onClick={() => (navigate(n.screen), onClose())}
-                  aria-current={active ? 'page' : undefined}
-                  title={collapsed ? SCREEN_TITLES[n.screen] : undefined}
-                >
-                  <Icon name={n.icon} />
-                  <span className="appnav__label">{SCREEN_TITLES[n.screen]}</span>
-                  {!!b?.value && <span className={`appnav__badge appnav__badge--${b.tone}`}>{b.value}</span>}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
-      <div className="appnav__status" title={summary?.settings.mode === 'postgres' ? 'Хранилище: PostgreSQL' : 'Хранилище: демо-база SQLite'}>
-        <div className="appnav__status-row">
-          <i className={`dot ${connected ? 'dot--ok' : 'dot--bad'}`} />
-          <b>{connected ? 'Склад онлайн' : 'Нет связи'}</b>
+      <nav className="appnav__scroll">{NAV.map(item)}</nav>
+      <div className="appnav__bottom">
+        {item({ screen: 'settings', icon: 'gear' })}
+        <div className="appnav__user" title={`${connected ? 'Склад онлайн, данные обновляются в реальном времени' : 'Нет связи с сервером'} · ${storage}`}>
+          <span className="appnav__avatar" aria-hidden>
+            АД
+            <i className={`dot ${connected ? 'dot--ok' : 'dot--bad'}`} />
+          </span>
+          <span className="appnav__who">
+            <b>Администратор</b>
+            <span>{connected ? 'Рабочая смена' : 'Нет связи'}</span>
+          </span>
         </div>
-        <span>{summary?.settings.mode === 'postgres' ? 'PostgreSQL · обновления в реальном времени' : 'Демо-режим · данные обновляются в реальном времени'}</span>
       </div>
     </aside>
   );
 }
 
-// ───────────────────────── Верхняя панель ─────────────────────────
+// ───────────────────────── Заголовок экрана ─────────────────────────
 
-export function TopBar({ onMenu }: { onMenu: () => void }) {
-  const { navigate, route } = useUi();
+const PRIMARY_ACTION: Partial<Record<Screen, { label: string; icon: IconName; to: [Screen, string?] }>> = {
+  stock: { label: 'Принять поставку', icon: 'plus', to: ['supplies', 'new'] },
+  supplies: { label: 'Новая поставка', icon: 'plus', to: ['supplies', 'new'] },
+  'stop-list': { label: 'Что заказать', icon: 'inbox', to: ['supplies', 'recommendations'] },
+  orders: { label: 'Новый заказ', icon: 'plus', to: ['orders', 'new'] },
+  hot: { label: 'Новый заказ', icon: 'plus', to: ['orders', 'new'] },
+  expiry: { label: 'Что приготовить', icon: 'flame', to: ['hot'] },
+};
+
+/** Заголовок экрана и общие кнопки: время ресторана, тема, предупреждения, основное действие. */
+export function PageHeader({ onMenu }: { onMenu: () => void }) {
+  const { route, navigate } = useUi();
   const { summary } = useLive();
-  const alerts = summary?.activeAlerts ?? 0;
+  const tz = useTz();
+  const now = useClock();
   const [theme, cycleTheme] = useTheme();
+  const action = PRIMARY_ACTION[route.screen];
+  const alerts = summary?.activeAlerts ?? 0;
   const themeLabel = theme === 'system' ? 'Тема: как в системе' : theme === 'light' ? 'Тема: светлая' : 'Тема: тёмная';
 
   return (
-    <header className="topbar">
+    <header className="pagehead">
       <button className="iconbtn mobile-only" onClick={onMenu} aria-label="Открыть меню">
         <Icon name="menu" />
       </button>
-      <div className="crumbs" aria-label="Текущий раздел">
-        <span>Склад ресторана</span>
-        <Icon name="chevron" />
-        <b>{SCREEN_TITLES[route.screen]}</b>
+      <div className="pagehead__title">
+        <h1>{SCREEN_TITLES[route.screen]}</h1>
+        <p>{SCREEN_SUBTITLES[route.screen]}</p>
       </div>
-      <div className="topbar__right">
+      <div className="pagehead__actions">
         {/* Сюда экран выносит свои кнопки выдвижных панелей («Фильтры», «Контроль»). */}
-        <div id="topbar-slot" className="topbar__slot" />
+        <div id="topbar-slot" className="pagehead__slot" />
+        <span className="datepill" title={`${weekday(now, tz)}, ${dayOfMonth(now, tz)} · время ресторана (${tz})`}>
+          <Icon name="calendar" />
+          Сегодня · {timeOnly(now, tz)}
+        </span>
         <button className="iconbtn" onClick={cycleTheme} aria-label={`${themeLabel}. Нажмите, чтобы переключить`} title={`${themeLabel} — нажмите, чтобы переключить`}>
           <Icon name={theme === 'system' ? 'monitor' : theme === 'light' ? 'sun' : 'moon'} />
         </button>
@@ -160,45 +163,13 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
           <Icon name="bell" />
           {alerts > 0 && <span className="iconbtn__count">{alerts}</span>}
         </button>
-      </div>
-    </header>
-  );
-}
-
-// ───────────────────────── Заголовок экрана ─────────────────────────
-
-const PRIMARY_ACTION: Partial<Record<Screen, { label: string; icon: IconName; to: [Screen, string?] }>> = {
-  stock: { label: 'Принять поставку', icon: 'truck', to: ['supplies', 'new'] },
-  supplies: { label: 'Новая поставка', icon: 'plus', to: ['supplies', 'new'] },
-  'stop-list': { label: 'Что заказать', icon: 'inbox', to: ['supplies', 'recommendations'] },
-  orders: { label: 'Новый заказ', icon: 'plus', to: ['orders', 'new'] },
-  hot: { label: 'Новый заказ', icon: 'receipt', to: ['orders', 'new'] },
-  expiry: { label: 'Что приготовить', icon: 'flame', to: ['hot'] },
-};
-
-export function PageHeader() {
-  const { route, navigate } = useUi();
-  const tz = useTz();
-  const now = useClock();
-  const action = PRIMARY_ACTION[route.screen];
-  return (
-    <div className="pagehead">
-      <div>
-        <h1>{SCREEN_TITLES[route.screen]}</h1>
-        <p>{SCREEN_SUBTITLES[route.screen]}</p>
-      </div>
-      <div className="pagehead__actions">
-        <span className="datepill" title={`Время ресторана · ${tz}`}>
-          <Icon name="calendar" />
-          {weekday(now, tz).toLowerCase()}, {dayOfMonth(now, tz)} · {timeOnly(now, tz)}
-        </span>
         {action && (
-          <button className="btn btn--blue" onClick={() => navigate(action.to[0], action.to[1] ?? null)}>
-            <Icon name={action.icon} /> {action.label}
+          <button className="btn btn--blue" onClick={() => navigate(action.to[0], action.to[1] ?? null)} title={action.label}>
+            <Icon name={action.icon} /> <span className="pagehead__label">{action.label}</span>
           </button>
         )}
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -206,8 +177,8 @@ export function PageHeader() {
 
 const MOBILE_NAV: { screen: Screen; short: string; icon: IconName }[] = [
   { screen: 'stock', short: 'Склад', icon: 'box' },
-  { screen: 'supplies', short: 'Поставки', icon: 'truck' },
   { screen: 'orders', short: 'Заказы', icon: 'receipt' },
+  { screen: 'supplies', short: 'Поставки', icon: 'truck' },
   { screen: 'stop-list', short: 'Стоп', icon: 'stop' },
   { screen: 'hot', short: 'Горячее', icon: 'flame' },
   { screen: 'stats', short: 'Отчёты', icon: 'chart' },

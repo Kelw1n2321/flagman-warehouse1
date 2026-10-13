@@ -33,6 +33,7 @@ const PATHS = {
   chevrons: 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
   calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
   filter: 'M4 6h16M7 12h10M10 18h4',
+  layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
 } as const;
 
 export type IconName = keyof typeof PATHS;

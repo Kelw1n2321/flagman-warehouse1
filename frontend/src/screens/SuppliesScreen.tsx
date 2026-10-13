@@ -115,7 +115,7 @@ function SupplyList({ search, status }: { search: string; status: string }) {
                       <tr key={s.id} className="is-clickable" onClick={() => navigate('supplies', s.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate('supplies', s.id)}>
                         <td>
                           <b>{s.supplyNumber}</b>
-                          <span className="uid" title="Уникальный идентификатор поставки">
+                          <span className="uid" title={`Уникальный идентификатор поставки: ${s.id}`}>
                             {s.id}
                           </span>
                         </td>
@@ -123,7 +123,9 @@ function SupplyList({ search, status }: { search: string; status: string }) {
                         <td style={{ whiteSpace: 'nowrap' }}>{dateShort(s.createdAt, tz)}</td>
                         <td style={{ whiteSpace: 'nowrap' }}>{s.receivedAt ? dateShort(s.receivedAt, tz) : '—'}</td>
                         <td className="num">{s.lineCount}</td>
-                        <td style={{ maxWidth: 280 }}>{s.productNames.join(', ')}</td>
+                        <td className="cell-products" title={s.productNames.join(', ')}>
+                          <span>{s.productNames.join(', ')}</span>
+                        </td>
                         <td style={{ whiteSpace: 'nowrap' }}>{s.earliestExpiry ? humanDate(s.earliestExpiry, tz, now) : '—'}</td>
                         <td>
                           <Tag kind={s.status}>{STATUS_LABEL[s.status]}</Tag>
