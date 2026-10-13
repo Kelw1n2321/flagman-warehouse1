@@ -1,7 +1,21 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import type { Batch, Dish, Product } from '../api/types';
 import { EXPIRY_LABEL, humanDate, qty, relative, RISK_LABEL, riskTier, TIER_LABEL } from '../lib/format';
 import { Icon } from './Icon';
+
+/**
+ * Карточка перерисовывается, только если изменились её данные. Обработчики (onOpen, onAdd) создаются
+ * заново при каждой отрисовке экрана, поэтому в сравнении не участвуют.
+ */
+export function memoCard<P extends object>(Component: ComponentType<P>) {
+  return memo(Component, (a, b) => {
+    for (const k of Object.keys(b) as (keyof P)[]) {
+      if (typeof b[k] === 'function') continue;
+      if (!Object.is(a[k], b[k])) return false;
+    }
+    return Object.keys(a).length === Object.keys(b).length;
+  });
+}
 
 export type Tone = 'ok' | 'warn' | 'crit' | 'neutral' | 'muted';
 type Tier = 'ok' | 'attention' | 'critical' | 'info';
@@ -73,7 +87,7 @@ export function CardHead({ name, sub, tier, status }: { name: string; sub: strin
 
 // ───────────────────────── Продукт ─────────────────────────
 
-export function ProductCard({ p, tz, now, selected, onOpen }: { p: Product; tz: string; now: Date; soonHours?: number; selected?: boolean; onOpen: () => void }) {
+export const ProductCard = memoCard(function ProductCard({ p, tz, now, selected, onOpen }: { p: Product; tz: string; now: Date; soonHours?: number; selected?: boolean; onOpen: () => void }) {
   const tier = riskTier(p.risk, p.blockedDishes.length > 0);
   const status = tier === 'ok' ? TIER_LABEL.ok : RISK_LABEL[p.risk === 'ok' ? 'low' : p.risk];
   const changed = useChanged(p.available);
@@ -102,13 +116,13 @@ export function ProductCard({ p, tz, now, selected, onOpen }: { p: Product; tz: 
       )}
     </button>
   );
-}
+});
 
 // ───────────────────────── Партия ─────────────────────────
 
 const EXPIRY_TIER = { normal: 'ok', soon: 'attention', critical: 'critical', expired: 'critical' } as const;
 
-export function BatchCard({ b, tz, now, onOpen }: { b: Batch; tz: string; now: Date; onOpen: () => void }) {
+export const BatchCard = memoCard(function BatchCard({ b, tz, now, onOpen }: { b: Batch; tz: string; now: Date; onOpen: () => void }) {
   const expired = b.expiry === 'expired';
   return (
     <button className="dcard dcard--clickable" onClick={onOpen} aria-label={`Партия ${b.code} ${b.productName}`}>
@@ -128,7 +142,7 @@ export function BatchCard({ b, tz, now, onOpen }: { b: Batch; tz: string; now: D
       />
     </button>
   );
-}
+});
 
 // ───────────────────────── Блюдо ─────────────────────────
 
@@ -141,7 +155,7 @@ export function dishTier(d: Dish): { tier: Tier; status: string } {
   return { tier: 'ok', status: 'Доступно' };
 }
 
-export function DishCard({ d, onAdd, onOpen, inOrder }: { d: Dish; onAdd?: () => void; onOpen?: () => void; inOrder?: number }) {
+export const DishCard = memoCard(function DishCard({ d, onAdd, onOpen, inOrder }: { d: Dish; onAdd?: () => void; onOpen?: () => void; inOrder?: number }) {
   const missing = d.ingredients.filter((i) => i.missing > 0);
   const risky = d.ingredients.filter((i) => i.atRisk).length;
   const { tier, status } = dishTier(d);
@@ -181,4 +195,4 @@ export function DishCard({ d, onAdd, onOpen, inOrder }: { d: Dish; onAdd?: () =>
       )}
     </Tag>
   );
-}
+});

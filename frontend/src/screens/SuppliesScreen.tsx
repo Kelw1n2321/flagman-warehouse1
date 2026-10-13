@@ -164,7 +164,6 @@ function SupplyDetail({ id, onClose }: { id: string; onClose: () => void }) {
   return (
     <Modal
       title={s ? `Поставка ${s.supplyNumber}` : 'Поставка'}
-      icon="truck"
       onClose={onClose}
       footer={
         s?.status === 'draft' && (
@@ -225,7 +224,7 @@ function SupplyDetail({ id, onClose }: { id: string; onClose: () => void }) {
                   {(d.lines ?? []).map((l) => (
                     <tr key={l.id} className={`is-clickable row--${l.batch && l.batch.state !== 'active' ? 'muted' : l.expiry}`} onClick={() => openProduct(l.productId)}>
                       <td>
-                        <span className="emoji">{l.icon}</span> {l.productName}
+                        {l.productName}
                       </td>
                       <td className="num">{qty(l.quantity, l.unit)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{dateShort(l.expiresAt, tz)}</td>
@@ -428,7 +427,7 @@ function SupplyComposer() {
             <div key={l.key} className="risk risk--info" style={{ padding: 8 }}>
               <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
                 <b>
-                  <span className="emoji">{p?.icon}</span> {p?.name ?? '…'}
+                  {p?.name ?? '…'}
                 </b>
                 <button className="btn btn--sm btn--red" onClick={() => setLines(lines.filter((x) => x.key !== l.key))} aria-label="Убрать строку">
                   <Icon name="trash" />
@@ -533,7 +532,7 @@ function Recommendations() {
                           </td>
                           <td>
                             <button className="btn btn--sm" onClick={() => openProduct(r.productId)}>
-                              <span className="emoji">{r.icon}</span> {r.name}
+                              {r.name}
                             </button>
                           </td>
                           <td>

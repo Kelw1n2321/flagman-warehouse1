@@ -226,13 +226,13 @@ export function Workspace({ sidebar, right, rightLabel = 'Контроль', rig
   const toggles = (
     <>
       {sidebar && (
-        <button className="btn btn--sm mobile-only" onClick={() => setLeft(true)}>
-          <Icon name="filter" /> Фильтры
+        <button className="btn btn--sm mobile-only" onClick={() => setLeft(true)} title="Фильтры" aria-label="Фильтры">
+          <Icon name="filter" /> <span className="btn__label">Фильтры</span>
         </button>
       )}
       {right && (
-        <button className="btn btn--sm drawer-toggle" onClick={() => setRight(true)}>
-          <Icon name="panel" /> {rightLabel}
+        <button className="btn btn--sm drawer-toggle" onClick={() => setRight(true)} title={rightLabel} aria-label={rightLabel}>
+          <Icon name="panel" /> <span className="btn__label">{rightLabel}</span>
           {rightCount ? <span className="btn__count">{rightCount}</span> : null}
         </button>
       )}

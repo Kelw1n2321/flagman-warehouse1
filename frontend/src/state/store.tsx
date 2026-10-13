@@ -25,13 +25,31 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let source: EventSource | null = null;
     let retry: number | undefined;
+    let pending: number | undefined;
+    let missed = false;
+    // Пачку событий (заказ, генератор, списание) склеиваем в одно обновление; в скрытой вкладке не обновляемся,
+    // а догоняем изменения, когда вкладку снова открыли.
+    const schedule = () => {
+      if (document.hidden) {
+        missed = true;
+        return;
+      }
+      window.clearTimeout(pending);
+      pending = window.setTimeout(bump, 250);
+    };
+    const onVisible = () => {
+      if (!document.hidden && missed) {
+        missed = false;
+        bump();
+      }
+    };
     const connect = () => {
       source = new EventSource('/api/v1/events');
       source.addEventListener('hello', () => {
         setConnected(true);
-        bump(); // после переподключения подтягиваем пропущенные изменения
+        schedule(); // после переподключения подтягиваем пропущенные изменения
       });
-      source.addEventListener('changed', () => bump());
+      source.addEventListener('changed', schedule);
       source.onerror = () => {
         setConnected(false);
         source?.close();
@@ -39,12 +57,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       };
     };
     connect();
+    document.addEventListener('visibilitychange', onVisible);
     // Резервное обновление: сроки «стареют» даже без событий.
-    const poll = window.setInterval(bump, 60_000);
+    const poll = window.setInterval(schedule, 60_000);
     return () => {
       source?.close();
       window.clearTimeout(retry);
+      window.clearTimeout(pending);
       window.clearInterval(poll);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [bump]);
 
@@ -53,7 +74,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     api
       .get<Summary>('/summary', ctrl.signal)
       .then((s) => {
-        setSummary(s);
+        setSummary((prev) => share(prev, s));
         setSummaryError(null);
       })
       .catch((e) => {
@@ -91,11 +112,17 @@ export function NowProvider({ children }: { children: ReactNode }) {
 
 export const useNow = () => useContext(NowContext);
 
+/** Часы с точностью до минуты: перерисовка ровно в начале каждой минуты, а не каждую секунду. */
 export function useClock(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
+    let id: number;
+    const tick = () => {
+      setNow(new Date());
+      id = window.setTimeout(tick, 60_000 - (Date.now() % 60_000) + 50);
+    };
+    id = window.setTimeout(tick, 60_000 - (Date.now() % 60_000) + 50);
+    return () => window.clearTimeout(id);
   }, []);
   return now;
 }
@@ -109,23 +136,80 @@ export interface QueryResult<T> {
   reload: () => void;
 }
 
+/**
+ * Структурное разделение: неизменившиеся части нового ответа заменяются прежними объектами.
+ * Тогда карточки, данные которых не поменялись, получают те же ссылки и не перерисовываются.
+ */
+export function share<T>(prev: T, next: T): T {
+  if (Object.is(prev, next)) return prev;
+  if (Array.isArray(prev) && Array.isArray(next)) {
+    let same = prev.length === next.length;
+    const out = next.map((n, i) => {
+      const v = share(prev[i], n);
+      if (v !== prev[i]) same = false;
+      return v;
+    });
+    return (same ? prev : out) as T;
+  }
+  if (isPlainObject(prev) && isPlainObject(next)) {
+    const keys = Object.keys(next);
+    let same = keys.length === Object.keys(prev).length;
+    const out: Record<string, unknown> = {};
+    for (const k of keys) {
+      out[k] = share(prev[k], next[k]);
+      if (out[k] !== prev[k]) same = false;
+    }
+    return (same ? prev : out) as T;
+  }
+  return next;
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && Object.getPrototypeOf(v) === Object.prototype;
+}
+
+// Последний ответ по каждому адресу: при возврате на вкладку данные показываются сразу,
+// а свежие догружаются в фоне (на медленной сети экран не пустеет при каждом переходе).
+const queryCache = new Map<string, unknown>();
+const CACHE_LIMIT = 60;
+
+function remember(path: string, data: unknown) {
+  queryCache.delete(path);
+  queryCache.set(path, data);
+  if (queryCache.size > CACHE_LIMIT) queryCache.delete(queryCache.keys().next().value as string);
+}
+
+interface QueryState<T> {
+  data: T | undefined;
+  error: string | null;
+  loading: boolean;
+  key: string | null;
+}
+
 export function useQuery<T>(path: string | null): QueryResult<T> {
   const { version } = useLive();
-  const [state, setState] = useState<{ data: T | undefined; error: string | null; loading: boolean; key: string | null }>({
-    data: undefined,
+  const [state, setState] = useState<QueryState<T>>(() => ({
+    data: path !== null ? (queryCache.get(path) as T | undefined) : undefined,
     error: null,
-    loading: path !== null,
-    key: null,
-  });
+    loading: path !== null && !queryCache.has(path),
+    key: path,
+  }));
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     if (path === null) return;
     const ctrl = new AbortController();
-    setState((s) => ({ ...s, loading: true, data: s.key === path ? s.data : undefined, error: s.key === path ? s.error : null }));
+    // Фоновое обновление уже показанных данных не трогает состояние — лишней перерисовки нет.
+    setState((s) => (s.key === path ? s : { data: queryCache.get(path) as T | undefined, error: null, loading: !queryCache.has(path), key: path }));
     api
       .get<T>(path, ctrl.signal)
-      .then((data) => setState({ data, error: null, loading: false, key: path }))
+      .then((fresh) =>
+        setState((s) => {
+          const data = share(s.key === path ? s.data : (queryCache.get(path) as T | undefined), fresh) as T;
+          remember(path, data);
+          return s.key === path && s.data === data && !s.loading && !s.error ? s : { data, error: null, loading: false, key: path };
+        }),
+      )
       .catch((e) => {
         if ((e as Error).name === 'AbortError') return;
         setState((s) => ({ ...s, error: e instanceof ApiError ? e.detail : 'Не удалось загрузить данные', loading: false, key: path }));
@@ -133,7 +217,9 @@ export function useQuery<T>(path: string | null): QueryResult<T> {
     return () => ctrl.abort();
   }, [path, version, nonce]);
 
-  return { data: state.data, error: state.error, loading: state.loading, reload: () => setNonce((n) => n + 1) };
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+  const data = state.key === path ? state.data : path !== null ? (queryCache.get(path) as T | undefined) : undefined;
+  return { data, error: state.key === path ? state.error : null, loading: state.loading, reload };
 }
 
 // ───────── Навигация (hash-роутинг: состояние переживает перезагрузку) ─────────

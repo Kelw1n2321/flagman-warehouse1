@@ -1,8 +1,10 @@
+using System.IO.Compression;
 using System.Threading.RateLimiting;
 using Flagman.Api.Api;
 using Flagman.Api.Data;
 using Flagman.Api.Services;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +32,17 @@ builder.Services.AddScoped<QueryService>();
 builder.Services.AddHostedService<ExpiryMonitor>();
 builder.Services.AddHostedService<EventGenerator>();
 builder.Services.AddProblemDetails();
+// Сжатие JSON и статики: ответы склада в 5–10 раз меньше, что заметно на медленной сети.
+// Поток событий (text/event-stream) в список типов не входит и уходит без буферизации.
+builder.Services.AddResponseCompression(o =>
+{
+    o.EnableForHttps = true;
+    o.Providers.Add<BrotliCompressionProvider>();
+    o.Providers.Add<GzipCompressionProvider>();
+    o.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/problem+json", "image/svg+xml"]);
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -55,6 +68,7 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
         extensions: errors is null ? null : new Dictionary<string, object?> { ["errors"] = errors }).ExecuteAsync(ctx);
 }));
 
+app.UseResponseCompression();
 app.UseRateLimiter();
 app.UseDefaultFiles();
 // index.html не кэшируется (иначе после сборки браузер держит старые ассеты), хэшированные ассеты — надолго.

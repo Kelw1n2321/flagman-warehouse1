@@ -2,11 +2,31 @@ import { useState } from 'react';
 import type { HotOffer, HotOffers } from '../api/types';
 import { Icon } from '../components/Icon';
 import { Workspace } from '../components/Shell';
-import { Bar, Emoji, EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
+import { Bar, EmptyState, Loadable, LoadingBar } from '../components/ui';
+import { CardHead, memoCard, Meta, Stats } from '../components/Cards';
 import { hoursLeft, qty } from '../lib/format';
 import { useQuery, useUi } from '../state/store';
 
 const LEVEL = { high: 'Высокий', medium: 'Средний', low: 'Низкий' } as const;
+const LEVEL_TIER = { high: 'critical', medium: 'attention', low: 'info' } as const;
+
+/** Карточка предложения: приоритет, сколько порций продать и какие продукты это спасёт. */
+const HotCard = memoCard(function HotCard({ o, rank, selected, onSelect }: { o: HotOffer; rank: number; selected: boolean; onSelect: () => void }) {
+  return (
+    <button className={`dcard dcard--clickable ${selected ? 'is-selected' : ''}`} onClick={onSelect} aria-pressed={selected}>
+      <CardHead name={o.name} sub={`№${rank} · ${o.score.toLocaleString('ru-RU')} балл.`} tier={LEVEL_TIER[o.level]} status={`Приоритет: ${LEVEL[o.level].toLowerCase()}`} />
+      <Stats
+        items={[
+          { label: 'Продать порций', value: o.recommendedServings, tone: 'warn', title: 'Сколько порций нужно продать, чтобы использовать продукты до конца срока' },
+          { label: 'Доступно порций', value: o.maxServings, tone: o.maxServings > 0 ? 'ok' : 'crit' },
+          { label: 'Продуктов под риском', value: o.ingredients.length, tone: 'neutral' },
+        ]}
+      />
+      <Meta rows={o.ingredients.map((ing) => [ing.name, `${qty(ing.atRiskQuantity, ing.unit)} · ${hoursLeft(ing.hoursLeft)}`, ing.state === 'critical' || ing.state === 'expired' ? 'crit' : 'warn'] as [string, string, 'crit' | 'warn'])} />
+      <span className="dcard__summary">{o.summary}</span>
+    </button>
+  );
+});
 
 export function HotScreen() {
   const q = useQuery<HotOffers>('/hot-offers');
@@ -58,41 +78,9 @@ export function HotScreen() {
               {offers.length === 0 ? (
                 <EmptyState icon="flame" title="Горячих предложений нет" text="Нет пригодных партий с истекающим сроком, которые можно реализовать через доступные блюда." />
               ) : (
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                  {offers.map((o, i) => (
-                    <button key={o.dishId} className={`hot-card hot-card--${o.level} ${current?.dishId === o.dishId ? 'is-selected' : ''}`} onClick={() => setSelected(o.dishId)}>
-                      <span className="hot-card__rank">#{i + 1}</span>
-                      <span className="hot-card__head">
-                        <span className="emoji" style={{ fontSize: 44 }}>
-                          {o.icon}
-                        </span>
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <b className="hot-card__name">{o.name}</b>
-                          <span className="row" style={{ gap: 6 }}>
-                            <Tag kind={o.level}>Приоритет: {LEVEL[o.level].toLowerCase()}</Tag>
-                            <span className="hot-card__score" title="Сумма вкладов ингредиентов">
-                              {o.score.toLocaleString('ru-RU')} балл.
-                            </span>
-                          </span>
-                        </span>
-                      </span>
-                      <span className="hot-card__summary">{o.summary}</span>
-                      <span className="hot-card__chips">
-                        {o.ingredients.map((ing) => (
-                          <span key={ing.productId} className={`chip chip--${ing.state}`}>
-                            <Emoji>{ing.icon}</Emoji> {ing.name}: {qty(ing.atRiskQuantity, ing.unit)} · {hoursLeft(ing.hoursLeft)}
-                          </span>
-                        ))}
-                      </span>
-                      <span className="hot-card__foot">
-                        <span>
-                          Доступно: <b>{o.maxServings} порц.</b>
-                        </span>
-                        <span>
-                          Рекомендуется продать: <b>{o.recommendedServings}</b>
-                        </span>
-                      </span>
-                    </button>
+                <div className="grid grid--dishes">
+                  {offers.map((o) => (
+                    <HotCard key={o.dishId} o={o} rank={(q.data?.offers ?? []).indexOf(o) + 1} selected={current?.dishId === o.dishId} onSelect={() => setSelected(o.dishId)} />
                   ))}
                 </div>
               )}
@@ -112,7 +100,7 @@ export function HotScreen() {
                         {d.blocked.map((b) => (
                           <tr key={b.dishId}>
                             <td>
-                              <span className="emoji">{b.icon}</span> {b.name}
+                              <b>{b.name}</b>
                             </td>
                             <td>{b.atRiskProducts.join(', ')}</td>
                             <td style={{ color: 'var(--crit)', fontWeight: 700 }}>{b.missingProducts.join(', ')}</td>
@@ -143,12 +131,9 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
           <EmptyState dark icon="chevron" title="Выберите блюдо" />
         ) : (
           <>
-            <div className="row" style={{ flexWrap: 'nowrap' }}>
-              <span className="emoji" style={{ fontSize: 40 }}>
-                {offer.icon}
-              </span>
+            <div>
               <div>
-                <b style={{ fontSize: 18 }}>{offer.name}</b>
+                <b style={{ fontSize: 17 }}>{offer.name}</b>
                 <div className="muted" style={{ fontSize: 12.5 }}>
                   {offer.description}
                 </div>
@@ -163,9 +148,7 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
             {offer.ingredients.map((ing) => (
               <div key={ing.productId} className={`risk risk--${ing.state === 'critical' ? 'critical' : 'warning'}`} style={{ padding: 9 }}>
                 <div className="row" style={{ justifyContent: 'space-between' }}>
-                  <b>
-                    <Emoji>{ing.icon}</Emoji> {ing.name}
-                  </b>
+                  <b>{ing.name}</b>
                   <span className="pill-num">+{ing.contribution.toLocaleString('ru-RU')}</span>
                 </div>
                 <ul style={{ margin: '6px 0', paddingLeft: 18, fontSize: 13, color: 'var(--text-2)' }}>

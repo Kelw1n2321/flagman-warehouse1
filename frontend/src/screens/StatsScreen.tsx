@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Stats } from '../api/types';
 import { BarChart, SERIES } from '../components/Charts';
 import { CategoryList, Workspace } from '../components/Shell';
-import { Bar, Emoji, EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
+import { Bar, EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
 import { humanDate, qty, relative } from '../lib/format';
 import { useNow, useQuery, useTz, useUi } from '../state/store';
 
@@ -96,7 +96,7 @@ export function StatsScreen() {
                       {s.flows.map((f) => (
                         <tr key={f.productId} className="is-clickable" onClick={() => openProduct(f.productId)}>
                           <td>
-                            <Emoji>{f.icon}</Emoji> {f.name}
+                            {f.name}
                           </td>
                           <td className="num">{qty(f.received, f.unit)}</td>
                           <td className="num">{qty(f.consumed, f.unit)}</td>
@@ -138,7 +138,7 @@ export function StatsScreen() {
                         {s.deficits.map((d) => (
                           <tr key={d.productId} className="is-clickable" onClick={() => openProduct(d.productId)}>
                             <td>
-                              <Emoji>{d.icon}</Emoji> {d.name} {d.belowMinimum && <Tag kind="warning">ниже мин.</Tag>}
+                              {d.name} {d.belowMinimum && <Tag kind="warning">ниже мин.</Tag>}
                             </td>
                             <td className="num">{d.rejections}</td>
                             <td className="num">{d.missingTotal ? qty(d.missingTotal, d.unit) : '—'}</td>
@@ -167,7 +167,7 @@ export function StatsScreen() {
                         {s.stopFrequency.map((f) => (
                           <tr key={f.dishId}>
                             <td>
-                              <Emoji>{f.icon}</Emoji> {f.name}
+                              {f.name}
                             </td>
                             <td className="num">{f.entries}</td>
                             <td className="num">{f.totalHours.toLocaleString('ru-RU')}</td>
@@ -204,7 +204,7 @@ export function StatsScreen() {
                             onClick={() => openProduct(f.productId)}
                           >
                             <td>
-                              <Emoji>{f.icon}</Emoji> {f.name}
+                              {f.name}
                             </td>
                             <td className="num">{qty(f.available, f.unit)}</td>
                             <td className="num">{qty(f.dailyUsage, f.unit)}</td>
@@ -233,7 +233,7 @@ export function StatsScreen() {
                         {s.stopForecast.map((f) => (
                           <tr key={f.dishId}>
                             <td>
-                              <Emoji>{f.icon}</Emoji> {f.name}
+                              {f.name}
                             </td>
                             <td>
                               {humanDate(f.predictedAt, tz, now)} ({relative(f.hoursUntil)})

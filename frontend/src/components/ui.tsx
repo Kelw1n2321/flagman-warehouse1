@@ -6,33 +6,23 @@ let modalSeq = 0;
 import { useUi } from '../state/store';
 import { Icon, isIconName } from './Icon';
 
-export function Emoji({ children, label }: { children: string; label?: string }) {
-  return (
-    <span className="emoji" role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
-      {children}
-    </span>
-  );
-}
-
 export function Tag({ kind, children }: { kind: string; children: ReactNode }) {
   return <span className={`tag tag--${kind}`}>{children}</span>;
 }
 
-/** Модальное окно в стиле игрового окна: белая рамка, красный «крестик», фокус и Esc. */
+/** Модальное окно: заголовок, крестик, фокус внутри окна и закрытие по Esc. */
 export function Modal({
   title,
   onClose,
   children,
   footer,
   size,
-  icon,
 }: {
   title: ReactNode;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
   size?: 'sm' | 'md';
-  icon?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -58,7 +48,6 @@ export function Modal({
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${size ? `modal--${size}` : ''}`} role="dialog" aria-modal="true" tabIndex={-1} ref={ref}>
         <div className="modal__head">
-          {icon && <span className="modal__icon">{isIconName(icon) ? <Icon name={icon} /> : <Emoji>{icon}</Emoji>}</span>}
           <h2>{title}</h2>
           <button className="close-x" onClick={onClose} aria-label="Закрыть">
             <Icon name="x" />
@@ -114,7 +103,7 @@ export function Toasts() {
 export function EmptyState({ icon = 'inbox', title, text, dark, action }: { icon?: string; title: string; text?: string; dark?: boolean; action?: ReactNode }) {
   return (
     <div className={`state ${dark ? 'state--dark' : ''}`}>
-      <span className="state__icon">{isIconName(icon) ? <Icon name={icon} /> : <Emoji>{icon}</Emoji>}</span>
+      <span className="state__icon">{isIconName(icon) && <Icon name={icon} />}</span>
       <b>{title}</b>
       {text && <span>{text}</span>}
       {action}

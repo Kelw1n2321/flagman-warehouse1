@@ -451,7 +451,7 @@ function OrderBody({ order }: { order: Order }) {
 function OrderDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const q = useQuery<Order>(`/orders/${id}`);
   return (
-    <Modal title={q.data ? `Заказ ${q.data.number}` : 'Заказ'} icon="receipt" onClose={onClose} size="md">
+    <Modal title={q.data ? `Заказ ${q.data.number}` : 'Заказ'} onClose={onClose} size="md">
       <Loadable q={q}>{(o) => <OrderBody order={o} />}</Loadable>
     </Modal>
   );

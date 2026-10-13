@@ -4,7 +4,7 @@ import type { Alert, Batch, Product, StopList } from '../api/types';
 import { humanDate, qty, relative } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi } from '../state/store';
 import { Icon, type IconName } from './Icon';
-import { Emoji, EmptyState, Loadable } from './ui';
+import { EmptyState, Loadable } from './ui';
 
 type Tab = 'risks' | 'expiry' | 'deficit';
 
@@ -45,7 +45,7 @@ export function RiskItem({
     <div className={`risk risk--${tone} ${open ? 'is-selected' : ''}`}>
       <button className="risk__head" onClick={onToggle} aria-expanded={actions ? !!open : undefined}>
         <span className={`risk__icon risk__icon--${tone}`}>
-          {ICON_NAMES.has(icon) ? <Icon name={icon as IconName} /> : <Emoji>{icon}</Emoji>}
+          <Icon name={ICON_NAMES.has(icon) ? (icon as IconName) : 'box'} />
         </span>
         <span>
           <span className="risk__title">{title}</span>
@@ -58,7 +58,7 @@ export function RiskItem({
   );
 }
 
-/** Правая панель «Оперативный контроль» — вместо игровой корзины. */
+/** Правая панель «Контроль склада»: активные риски, ближайшие стопы, сроки и дефицит. */
 export function ControlPanel() {
   const [tab, setTab] = useState<Tab>('risks');
   const [selected, setSelected] = useState<string | null>(null);
@@ -205,7 +205,7 @@ function RisksTab({ selected, toggle }: TabProps) {
               <RiskItem
                 key={f.dishId}
                 tone="warning"
-                icon={f.icon}
+                icon="stop"
                 title={`«${f.name}» — стоп ${relative(f.hoursUntil)}`}
                 text={`При текущем расходе закончится «${f.causeProductName}». Сейчас доступно ${f.maxServings} порц.`}
                 onToggle={() => navigate('stop-list')}
@@ -235,7 +235,7 @@ function ExpiryTab({ selected, toggle }: TabProps) {
               <RiskItem
                 key={b.id}
                 tone={b.expiry === 'soon' ? 'warning' : 'critical'}
-                icon={b.icon}
+                icon="clock"
                 title={`${b.productName}: ${qty(b.quantityRemaining, b.unit)}`}
                 text={`${b.expiry === 'expired' ? 'Просрочено' : 'Истекает'} ${relative(b.hoursLeft)} · ${humanDate(b.expiresAt, tz, now)}`}
                 meta={
@@ -285,7 +285,7 @@ function DeficitTab({ selected, toggle }: TabProps) {
               <RiskItem
                 key={p.id}
                 tone={p.blockedDishes.length || p.available <= 0 ? 'critical' : 'warning'}
-                icon={p.icon}
+                icon="box"
                 title={p.name}
                 text={`Доступно ${qty(p.available, p.unit)} при минимуме ${qty(p.minStock, p.unit)}${p.expired > 0 ? ` · просрочено ${qty(p.expired, p.unit)}` : ''}`}
                 meta={p.blockedDishes.length > 0 ? <span>Стоп-лист: {p.blockedDishes.join(', ')}</span> : undefined}

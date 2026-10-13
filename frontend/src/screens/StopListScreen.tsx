@@ -1,8 +1,9 @@
 import type { StopList } from '../api/types';
+import { CardHead, Meta, StatusPill, Stats } from '../components/Cards';
 import { ControlPanel } from '../components/ControlPanel';
 import { Icon } from '../components/Icon';
 import { Workspace } from '../components/Shell';
-import { Emoji, EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
+import { EmptyState, Loadable, LoadingBar } from '../components/ui';
 import { humanDate, qty, relative } from '../lib/format';
 import { useLive, useNow, useQuery, useTz, useUi } from '../state/store';
 
@@ -12,6 +13,7 @@ export function StopListScreen() {
   const { summary } = useLive();
   const tz = useTz();
   const now = useNow();
+  const d = q.data;
 
   return (
     <Workspace
@@ -19,15 +21,15 @@ export function StopListScreen() {
       sidebar={
         <div className="sidebar__scroll">
           <h3>Стоп-лист</h3>
-          <div className="sheet" style={{ padding: 10 }}>
-            <div style={{ fontSize: 34, fontWeight: 700, lineHeight: 1 }}>
-              {q.data?.items.length ?? '…'}
-              <span style={{ fontSize: 16 }}> / {q.data?.totalDishes ?? '…'}</span>
-            </div>
-            <div className="ink-muted">блюд недоступно</div>
-          </div>
-          <p className="muted" style={{ fontSize: 12.5, margin: '4px 0' }}>
-            Пересчитывается автоматически после поставок, списаний, корректировок, изменения рецептур и выбытия просрочки.
+          <Stats
+            items={[
+              { label: 'Недоступно блюд', value: d ? d.items.length : '…', tone: d?.items.length ? 'crit' : 'muted' },
+              { label: 'Всего в меню', value: d?.totalDishes ?? '…', tone: 'neutral' },
+              { label: 'Прогноз стопов', value: d ? d.forecast.length : '…', tone: d?.forecast.length ? 'warn' : 'muted', title: 'Блюда, которые попадут в стоп-лист в ближайшие 7 дней' },
+            ]}
+          />
+          <p className="muted" style={{ fontSize: 12.5, margin: '6px 2px' }}>
+            Пересчитывается автоматически после поставок, заказов, списаний, корректировок, изменения рецептур и выбытия просрочки.
           </p>
           <button className="side-btn side-btn--nav" onClick={() => navigate('supplies', 'recommendations')}>
             <Icon name="truck" /> <span style={{ flex: 1 }}>Что заказать</span>
@@ -47,50 +49,35 @@ export function StopListScreen() {
               {d.items.length === 0 ? (
                 <EmptyState icon="check" title="Стоп-лист пуст" text="Все блюда меню можно приготовить из доступных остатков." />
               ) : (
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+                <div className="grid grid--dishes">
                   {d.items.map((it) => (
-                    <div key={it.dishId} className="stop-card">
-                      <div className="stop-card__head">
-                        <span className="emoji" style={{ fontSize: 40 }}>
-                          {it.icon}
-                        </span>
-                        <div style={{ flex: 1 }}>
-                          <b style={{ fontSize: 19 }}>{it.name}</b>
-                          <div className="row" style={{ gap: 6, marginTop: 3 }}>
-                            <Tag kind="critical">Недоступно</Tag>
-                            {it.since && <span className="ink-muted">с {humanDate(it.since, tz, now)}</span>}
-                          </div>
-                        </div>
+                    <article key={it.dishId} className="dcard">
+                      <CardHead name={it.name} sub={`${it.category} · не хватает ${it.missing.length}`} tier="critical" status="Стоп-лист" />
+                      <div className="dcard__stats">
+                        {it.missing.map((m) => (
+                          <button
+                            key={m.productId}
+                            className="dcard__stat dcard__stat--btn"
+                            onClick={() => openProduct(m.productId)}
+                            title={`Нужно ${qty(m.required, m.unit)} на порцию, есть ${qty(m.available, m.unit)}${m.expiredExcluded > 0 ? `; просрочено ${qty(m.expiredExcluded, m.unit)} — не используется` : ''}`}
+                          >
+                            <dt>{m.name}</dt>
+                            <dd className="tone-crit">
+                              {qty(m.available, m.unit)} / {qty(m.required, m.unit)}
+                            </dd>
+                          </button>
+                        ))}
                       </div>
-                      <table className="table">
-                        <thead>
-                          <tr>
-                            <th>Не хватает</th>
-                            <th className="num">Нужно</th>
-                            <th className="num">Есть</th>
-                            <th className="num">Нехватка</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {it.missing.map((m) => (
-                            <tr key={m.productId} className="is-clickable" onClick={() => openProduct(m.productId)}>
-                              <td>
-                                <span className="emoji">{m.icon}</span> <b>{m.name}</b>
-                                {m.expiredExcluded > 0 && <div className="ink-muted">просрочено {qty(m.expiredExcluded, m.unit)} — не используется</div>}
-                              </td>
-                              <td className="num">{qty(m.required, m.unit)}</td>
-                              <td className="num">{qty(m.available, m.unit)}</td>
-                              <td className="num" style={{ color: 'var(--crit)', fontWeight: 700 }}>
-                                {qty(m.shortfall, m.unit)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <div className="ink-muted" style={{ fontSize: 12 }}>
-                        Норма указана на одну порцию.
-                      </div>
-                    </div>
+                      <Meta
+                        rows={[
+                          ['В стоп-листе', it.since ? `с ${humanDate(it.since, tz, now)}` : '—'],
+                          ['Есть / нужно', 'на 1 порцию'],
+                        ]}
+                      />
+                      <button className="dcard__action" onClick={() => navigate('supplies', 'recommendations')}>
+                        <Icon name="truck" /> Что заказать
+                      </button>
+                    </article>
                   ))}
                 </div>
               )}
@@ -107,18 +94,28 @@ export function StopListScreen() {
                           <th>Блюдо</th>
                           <th className="num">Порций сейчас</th>
                           <th>Ожидаемый стоп</th>
+                          <th>Срочность</th>
                           <th>Причина</th>
                         </tr>
                       </thead>
                       <tbody>
                         {d.forecast.map((f) => (
-                          <tr key={f.dishId} className={f.hoursUntil <= 24 ? 'row--critical' : f.hoursUntil <= 72 ? 'row--soon' : ''}>
+                          <tr key={f.dishId}>
                             <td>
-                              <span className="emoji">{f.icon}</span> {f.name}
+                              <b>{f.name}</b>
                             </td>
                             <td className="num">{f.maxServings}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              {humanDate(f.predictedAt, tz, now)} · {relative(f.hoursUntil)}
+                            </td>
                             <td>
-                              {humanDate(f.predictedAt, tz, now)} ({relative(f.hoursUntil)})
+                              {f.hoursUntil <= 24 ? (
+                                <StatusPill tier="critical">До суток</StatusPill>
+                              ) : f.hoursUntil <= 72 ? (
+                                <StatusPill tier="attention">До 3 дней</StatusPill>
+                              ) : (
+                                <StatusPill tier="info">Позже</StatusPill>
+                              )}
                             </td>
                             <td>
                               <button className="btn btn--sm" onClick={() => openProduct(f.causeProductId)}>
@@ -138,9 +135,9 @@ export function StopListScreen() {
                   <h3>Вернулись в меню за сутки</h3>
                   <div className="row">
                     {d.recentlyReturned.map((r) => (
-                      <span key={r.dishId} className="tag tag--ok" style={{ fontSize: 13, padding: '4px 10px' }}>
-                        <Emoji>{r.icon}</Emoji> {r.name} · {humanDate(r.endedAt, tz, now)}
-                      </span>
+                      <StatusPill key={r.dishId} tier="ok">
+                        {r.name} · {humanDate(r.endedAt, tz, now)}
+                      </StatusPill>
                     ))}
                   </div>
                 </div>

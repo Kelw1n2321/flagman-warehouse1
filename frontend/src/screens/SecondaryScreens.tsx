@@ -5,7 +5,7 @@ import { ALERT_ICON, ControlPanel } from '../components/ControlPanel';
 import { Icon } from '../components/Icon';
 import { MOVEMENT_LABEL, MovementTable } from '../components/ProductModal';
 import { CategoryList, SearchBox, Workspace } from '../components/Shell';
-import { Emoji, EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
+import { EmptyState, Loadable, LoadingBar, LoadingGrid, Modal, Tag } from '../components/ui';
 import { dateShort, EXPIRY_LABEL, humanDate, qty, relative, unitLabel } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi } from '../state/store';
 import { DishCard } from '../components/Cards';
@@ -74,15 +74,11 @@ export function ExpiryScreen() {
           <option value="qty">По количеству</option>
         </select>
         <div className="legend">
-          <span>
-            <i className="sq sq--green" /> Норма &gt;{s?.soonHours ?? 72} ч
-          </span>
-          <span>
-            <i className="sq sq--yellow" /> Скоро {s?.criticalHours ?? 24}–{s?.soonHours ?? 72} ч
-          </span>
-          <span>
-            <i className="sq sq--red" /> Критично ≤{s?.criticalHours ?? 24} ч / просрочено
-          </span>
+          <Tag kind="normal">Норма &gt;{s?.soonHours ?? 72} ч</Tag>
+          <Tag kind="soon">
+            Скоро {s?.criticalHours ?? 24}–{s?.soonHours ?? 72} ч
+          </Tag>
+          <Tag kind="critical">Критично ≤{s?.criticalHours ?? 24} ч</Tag>
         </div>
         <span className="spacer" />
         <button className="btn btn--red" disabled={busy || !counts.expired} onClick={writeOffAll}>
@@ -113,12 +109,12 @@ export function ExpiryScreen() {
                   </thead>
                   <tbody>
                     {list.map((b) => (
-                      <tr key={b.id} className={`is-clickable row--${b.expiry === 'normal' ? '' : b.expiry}`} onClick={() => openProduct(b.productId)}>
-                        <td>
-                          <Emoji>{b.icon}</Emoji> <b>{b.productName}</b>
+                      <tr key={b.id} className="is-clickable" onClick={() => openProduct(b.productId)}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <b>{b.productName}</b>
                         </td>
-                        <td>{b.code}</td>
-                        <td>{b.supplyNumber}</td>
+                        <td className="mono-cell">{b.code}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{b.supplyNumber}</td>
                         <td className="num">
                           {b.expiry === 'expired' ? (
                             <span title="Исключено из доступного остатка">
@@ -352,7 +348,6 @@ function DishEditor({ dish, onClose }: { dish: Dish | null; onClose: () => void 
   const products = useQuery<Product[]>('/stock?sort=name');
   const [name, setName] = useState(dish?.name ?? '');
   const [description, setDescription] = useState(dish?.description ?? '');
-  const [icon, setIcon] = useState(dish?.icon ?? '🍽️');
   const [category, setCategory] = useState(dish?.category ?? 'Горячее');
   const [active, setActive] = useState(dish?.isActive ?? true);
   const [rows, setRows] = useState<{ productId: number; qty: string }[]>(dish?.ingredients.map((i) => ({ productId: i.productId, qty: String(i.perServing) })) ?? []);
@@ -366,7 +361,7 @@ function DishEditor({ dish, onClose }: { dish: Dish | null; onClose: () => void 
     const ingredients = rows.map((r) => ({ productId: r.productId, quantityPerServing: Number(r.qty.replace(',', '.')) }));
     if (ingredients.some((i) => !Number.isFinite(i.quantityPerServing) || i.quantityPerServing <= 0)) return setError('Норма на порцию должна быть больше нуля.');
     if (new Set(ingredients.map((i) => i.productId)).size !== ingredients.length) return setError('Продукт указан дважды.');
-    const body = { name, description, icon, category, isActive: active, ingredients };
+    const body = { name, description, category, isActive: active, ingredients };
     const ok = dish ? await run(() => api.put(`/dishes/${dish.id}`, body), 'Рецептура сохранена, доступность пересчитана') : await run(() => api.post('/dishes', body), 'Блюдо добавлено в меню');
     if (ok) onClose();
   };
@@ -374,7 +369,6 @@ function DishEditor({ dish, onClose }: { dish: Dish | null; onClose: () => void 
   return (
     <Modal
       title={dish ? `Рецептура: ${dish.name}` : 'Новое блюдо'}
-      icon={icon}
       onClose={onClose}
       size="md"
       footer={
@@ -396,10 +390,6 @@ function DishEditor({ dish, onClose }: { dish: Dish | null; onClose: () => void 
         <label className="field">
           Раздел меню
           <input className="input" value={category} onChange={(e) => setCategory(e.target.value)} />
-        </label>
-        <label className="field">
-          Иконка (эмодзи)
-          <input className="input" value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={8} />
         </label>
         <label className="check" style={{ alignSelf: 'end' }}>
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> В меню

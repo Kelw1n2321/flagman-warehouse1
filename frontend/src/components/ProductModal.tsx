@@ -36,7 +36,6 @@ function ProductModal({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <Modal
       title={p ? p.name : 'Продукт'}
-      icon={p?.icon}
       onClose={onClose}
       footer={
         p && (
@@ -225,7 +224,7 @@ function ProductModal({ id, onClose }: { id: number; onClose: () => void }) {
                         {d.dishes.map((x) => (
                           <tr key={x.dishId}>
                             <td>
-                              <span className="emoji">{x.icon}</span> {x.name}
+                              {x.name}
                             </td>
                             <td className="num">{qty(x.perServing, d.product.unit)}</td>
                             <td className="num">{x.maxServings}</td>
