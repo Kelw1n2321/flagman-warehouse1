@@ -1,4 +1,4 @@
-// Контракты API /api/v1 (зеркало Flagman.Api/Api/Dtos.cs). Время — ISO-строки в UTC.
+// Контракты API /api/v1 (зеркало Flagman.Api/Api/Dtos.cs). Время - ISO-строки в UTC.
 
 export type Unit = 'kg' | 'g' | 'l' | 'ml' | 'pcs';
 export type Risk = 'ok' | 'expiring' | 'low' | 'critical' | 'out' | 'expired';

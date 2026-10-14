@@ -58,7 +58,7 @@ export function RiskItem({
   );
 }
 
-/** Правая панель «Контроль склада»: активные риски, ближайшие стопы, сроки и дефицит. */
+/** Правая панель "Контроль склада": активные риски, ближайшие стопы, сроки и дефицит. */
 export function ControlPanel() {
   const [tab, setTab] = useState<Tab>('risks');
   const [selected, setSelected] = useState<string | null>(null);

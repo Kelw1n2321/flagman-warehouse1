@@ -33,7 +33,7 @@ export interface Stat {
   changed?: boolean;
 }
 
-/** Строки-плашки «подпись … значение» — основная информация карточки. */
+/** Строки-плашки "подпись ... значение" - основная информация карточки. */
 export function Stats({ items }: { items: Stat[] }) {
   return (
     <dl className="dcard__stats">
@@ -47,7 +47,7 @@ export function Stats({ items }: { items: Stat[] }) {
   );
 }
 
-/** Строки второго плана: «Партии», «Ближайший срок», «Ограничивает». */
+/** Строки второго плана: "Партии", "Ближайший срок", "Ограничивает". */
 export function Meta({ rows }: { rows: [string, ReactNode, Tone?][] }) {
   return (
     <div className="dcard__meta">
@@ -61,7 +61,7 @@ export function Meta({ rows }: { rows: [string, ReactNode, Tone?][] }) {
   );
 }
 
-/** true на короткое время после изменения значения (не при первом показе) — подсветка обновлённого остатка. */
+/** true на короткое время после изменения значения (не при первом показе) - подсветка обновлённого остатка. */
 function useChanged(value: number): boolean {
   const prev = useRef(value);
   const [changed, setChanged] = useState(false);
@@ -85,7 +85,7 @@ export function CardHead({ name, sub, tier, status }: { name: string; sub: strin
   );
 }
 
-// ───────────────────────── Продукт ─────────────────────────
+// Продукт
 
 export const ProductCard = memoCard(function ProductCard({ p, tz, now, selected, onOpen }: { p: Product; tz: string; now: Date; soonHours?: number; selected?: boolean; onOpen: () => void }) {
   const tier = riskTier(p.risk, p.blockedDishes.length > 0);
@@ -118,7 +118,7 @@ export const ProductCard = memoCard(function ProductCard({ p, tz, now, selected,
   );
 });
 
-// ───────────────────────── Партия ─────────────────────────
+// Партия
 
 const EXPIRY_TIER = { normal: 'ok', soon: 'attention', critical: 'critical', expired: 'critical' } as const;
 
@@ -144,7 +144,7 @@ export const BatchCard = memoCard(function BatchCard({ b, tz, now, onOpen }: { b
   );
 });
 
-// ───────────────────────── Блюдо ─────────────────────────
+// Блюдо
 
 /** Короткий состав для карточки: первые слова названий ингредиентов. */
 const shortIngredients = (d: Dish) => d.ingredients.map((i) => i.name.split(/[ (]/)[0]).join(', ');

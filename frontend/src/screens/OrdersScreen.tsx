@@ -70,7 +70,7 @@ export function OrdersScreen() {
   );
 }
 
-// ───────────────────────── Панель блюд ─────────────────────────
+// Панель блюд
 
 function DishBoard({ q, lines, onAdd }: { q: QueryResult<Dish[]>; lines: Lines; onAdd: (id: number) => void }) {
   const [search, setSearch] = useState('');
@@ -152,7 +152,7 @@ function DishBoard({ q, lines, onAdd }: { q: QueryResult<Dish[]>; lines: Lines; 
   );
 }
 
-// ───────────────────────── Окно «Новый заказ» ─────────────────────────
+// Окно "Новый заказ"
 
 function NewOrderModal({
   dishes,
@@ -344,7 +344,7 @@ function NewOrderModal({
   );
 }
 
-// ───────────────────────── Результат, детали, история ─────────────────────────
+// Результат, детали, история
 
 function OrderResult({ order, onClose }: { order: Order; onClose: () => void }) {
   return (

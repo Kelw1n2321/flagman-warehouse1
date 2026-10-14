@@ -63,8 +63,8 @@ public sealed class WarehouseServiceTests : IAsyncLifetime
 
         Assert.Equal(OrderStatus.Completed, outcome.Order.Status);
         var batches = await _host.BatchesAsync(chicken);
-        Assert.Equal(1m, batches[0].QuantityRemaining);                 // самая поздняя — не тронута
-        Assert.Equal(0m, batches[1].QuantityRemaining);                 // ранняя — израсходована полностью
+        Assert.Equal(1m, batches[0].QuantityRemaining);                 // самая поздняя - не тронута
+        Assert.Equal(0m, batches[1].QuantityRemaining);                 // ранняя - израсходована полностью
         Assert.Equal(BatchState.Depleted, batches[1].State);
         Assert.Equal(1.2m, batches[2].QuantityRemaining);               // остаток 0,8 взят из следующей по сроку
         var moves = await _host.With((_, db) => db.Movements.Where(m => m.OrderId == outcome.Order.Id).ToListAsync());

@@ -65,7 +65,7 @@ public class AdminDirectoryTests
         var dir = new AdminDirectory(null, AdminDirectory.HashId("FLG-TEST-0001", 1000) + ":Максим");
         Assert.True(dir.IsConfigured);
         Assert.Equal("Максим", dir.Find(" FLG-TEST-0001 ")?.Name);
-        Assert.Equal("Максим", dir.Find("FLG-TEST-0001")?.Name); // повторно — из кэша
+        Assert.Equal("Максим", dir.Find("FLG-TEST-0001")?.Name); // повторно - из кэша
         Assert.Null(dir.Find("FLG-TEST-0002"));
         Assert.Null(dir.Find(""));
     }

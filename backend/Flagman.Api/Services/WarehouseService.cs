@@ -22,8 +22,7 @@ public sealed record SettingsCommand(int SoonHours, int CriticalHours, bool Auto
 public sealed record OrderOutcome(Order Order, OrderEvaluation Evaluation, IReadOnlyList<(ProductBatch Batch, decimal Quantity)> Consumed);
 
 /// <summary>
-/// Все изменяющие операции склада. Каждая выполняется под <see cref="WriteGate"/> в одной транзакции:
-/// изменение партий, журнал движения, предупреждения и стоп-лист фиксируются вместе или не фиксируются вовсе.
+/// Все операции, которые меняют склад. Каждая идёт в одной транзакции, так что либо сохраняется всё, либо ничего.
 /// </summary>
 public sealed class WarehouseService(
     FlagmanDbContext db,
@@ -49,7 +48,7 @@ public sealed class WarehouseService(
         return WarehouseSnapshot.Build(products, batches, dishes, t, now);
     }
 
-    // ───────────────────────── Поставки ─────────────────────────
+    // Поставки
 
     public Task<Supply> CreateSupplyAsync(CreateSupplyCommand cmd, CancellationToken ct, DateTime? at = null) =>
         ExecuteAsync("supply.created", at, async now =>
@@ -192,7 +191,7 @@ public sealed class WarehouseService(
         return number;
     }
 
-    // ───────────────────────── Заказы ─────────────────────────
+    // Заказы
 
     public Task<OrderOutcome> PlaceOrderAsync(IReadOnlyList<OrderLineInput>? lines, string source, CancellationToken ct, DateTime? at = null,
         string? title = null, string? comment = null) =>
@@ -295,7 +294,7 @@ public sealed class WarehouseService(
             return new OrderOutcome(order, evaluation, consumed);
         }, ct);
 
-    /// <summary>Проверка заказа без списания (для кнопки «Проверить»).</summary>
+    /// <summary>Проверка заказа без списания (для кнопки "Проверить").</summary>
     public async Task<(OrderEvaluation Evaluation, WarehouseSnapshot Snapshot)> CheckOrderAsync(IReadOnlyList<OrderLineInput>? lines, CancellationToken ct)
     {
         var merged = ValidateOrderLines(lines);
@@ -325,7 +324,7 @@ public sealed class WarehouseService(
         return $"ЗК-{count + 1:00000}";
     }
 
-    // ───────────────────────── Партии: корректировки и списания ─────────────────────────
+    // Партии: корректировки и списания
 
     public Task<ProductBatch> AdjustBatchAsync(int batchId, decimal newQuantity, string? reason, CancellationToken ct, DateTime? at = null) =>
         ExecuteAsync("batch.adjusted", at, async now =>
@@ -410,7 +409,7 @@ public sealed class WarehouseService(
         return expired.Count;
     }
 
-    // ───────────────────────── Справочники ─────────────────────────
+    // Справочники
 
     public Task<Dish> UpdateDishAsync(int id, UpdateDishCommand cmd, CancellationToken ct) =>
         ExecuteAsync("dish.updated", null, async _ =>
@@ -513,7 +512,7 @@ public sealed class WarehouseService(
             return s;
         }, ct);
 
-    // ───────────────────────── Предупреждения ─────────────────────────
+    // Предупреждения
 
     public Task<int> AcknowledgeAlertsAsync(IReadOnlyCollection<int>? ids, CancellationToken ct) =>
         ExecuteAsync("alerts.acknowledged", null, async now =>
@@ -531,7 +530,7 @@ public sealed class WarehouseService(
 
     /// <summary>
     /// Периодическая задача: автосписание просрочки (если включено) и сверка предупреждений/стоп-листа
-    /// с текущим временем — партии переходят между состояниями сами по себе, без действий пользователя.
+    /// с текущим временем - партии переходят между состояниями сами по себе, без действий пользователя.
     /// </summary>
     public async Task<bool> TickAsync(CancellationToken ct)
     {
@@ -573,7 +572,7 @@ public sealed class WarehouseService(
         }
         catch
         {
-            // Откат транзакции происходит при Dispose; трекер очищаем, чтобы не сохранить «полуизменения».
+            // Откат транзакции происходит при Dispose; трекер очищаем, чтобы не сохранить "полуизменения".
             db.ChangeTracker.Clear();
             throw;
         }

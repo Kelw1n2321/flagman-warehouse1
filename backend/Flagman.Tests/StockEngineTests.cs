@@ -15,7 +15,7 @@ public sealed class StockEngineTests
     };
 
     [Theory]
-    [InlineData(0, ExpiryState.Expired)]          // ровно в момент окончания — уже просрочено
+    [InlineData(0, ExpiryState.Expired)]          // ровно в момент окончания - уже просрочено
     [InlineData(-0.01, ExpiryState.Expired)]
     [InlineData(0.01, ExpiryState.Critical)]
     [InlineData(24, ExpiryState.Critical)]        // граница критического порога включительно
@@ -91,7 +91,7 @@ public sealed class StockEngineTests
 
         var e = StockEngine.EvaluateOrder([(a, 1), (b, 1)], stock);
 
-        Assert.False(e.CanFulfill);                // по отдельности каждое блюдо помещается, вместе — нет
+        Assert.False(e.CanFulfill);                // по отдельности каждое блюдо помещается, вместе - нет
         Assert.Equal(0.1m, e.Shortages.Single().Missing);
     }
 }

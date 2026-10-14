@@ -24,8 +24,8 @@ public sealed record SupplyRecommendation(
     IReadOnlyList<string> Reasons);
 
 /// <summary>
-/// Прогноз по среднему расходу за окно наблюдения. Моделирование почасовое: расход идёт по FEFO,
-/// партия, срок которой наступил раньше, чем её израсходовали, выбывает — это ожидаемые потери.
+/// Прогноз по среднему расходу. Считаем по часам, расход идёт по FEFO.
+/// Если партия испортилась раньше, чем её потратили, она считается потерей.
 /// </summary>
 public static class Forecasting
 {
@@ -105,7 +105,7 @@ public static class Forecasting
     private static (List<ForecastPoint> Series, decimal Loss, DateTime? Depletion) Simulate(
         WarehouseSnapshot s, int productId, decimal hourly, int hours)
     {
-        // Копии остатков пригодных партий — прогноз ничего не меняет в снимке.
+        // Копии остатков пригодных партий - прогноз ничего не меняет в снимке.
         var batches = StockEngine.FefoOrder(s.BatchesByProduct[productId].Where(b => StockEngine.IsUsable(b, s.Now)))
             .Select(b => (b.ExpiresAt, Qty: b.QuantityRemaining))
             .ToList();

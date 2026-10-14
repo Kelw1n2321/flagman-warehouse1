@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [attempt]);
 
-  // Любой запрос получил 401 — сессия закончилась: возвращаемся на экран входа.
+  // Любой запрос получил 401 - сессия закончилась: возвращаемся на экран входа.
   useEffect(() => {
     const onUnauthorized = () => {
       clearQueryCache();

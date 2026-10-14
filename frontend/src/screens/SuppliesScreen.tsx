@@ -245,7 +245,7 @@ function SupplyDetail({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
-// ───────── Создание поставки ─────────
+// Создание поставки
 
 interface DraftLine {
   key: number;

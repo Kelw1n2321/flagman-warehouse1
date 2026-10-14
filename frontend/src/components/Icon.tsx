@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
-// Единый набор контурных иконок (толщина 2.2, скруглённые концы), чтобы статусы и навигация выглядели одинаково.
+// Все иконки в одном стиле: контур 2.2, скруглённые концы.
 const PATHS = {
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
   search: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-4-4',
@@ -45,7 +45,7 @@ export const isIconName = (v: string): v is IconName => v in PATHS;
 const STROKE = 2.2;
 
 /**
- * @param tight — подрезать пустые поля по ширине до фактического рисунка. Нужен там, где иконка стоит
+ * @param tight - подрезать пустые поля по ширине до фактического рисунка. Нужен там, где иконка стоит
  *   в ряду с текстом и важны одинаковые видимые промежутки (навигация): у разных иконок поля разные.
  */
 export function Icon({ name, title, className, tight }: { name: IconName; title?: string; className?: string; tight?: boolean }) {

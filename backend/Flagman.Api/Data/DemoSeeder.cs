@@ -5,9 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Flagman.Api.Data;
 
 /// <summary>
-/// Демонстрационные данные. История не «рисуется» вручную: поставки, заказы и списания за последнюю неделю
-/// проигрываются через те же команды <see cref="WarehouseService"/>, поэтому партии, журнал движения,
-/// стоп-лист и статистика гарантированно согласованы между собой.
+/// Демо-данные. Поставки, заказы и списания за неделю прогоняются через WarehouseService,
+/// поэтому остатки, журнал и статистика сходятся между собой.
 /// </summary>
 public static class DemoSeeder
 {
@@ -102,7 +101,7 @@ public static class DemoSeeder
         SupplyLineInput L(string sku, decimal qty, double? expiresInHours = null) =>
             new(id[sku], qty, expiresInHours is { } e ? H(e) : null, null, null);
 
-        // ── События истории (выполняются строго по времени) ──
+        // События истории (выполняются строго по времени)
         var events = new List<(DateTime At, Func<DateTime, Task> Run)>();
 
         void Supply(double at, string supplier, params SupplyLineInput[] lines) =>
@@ -122,7 +121,7 @@ public static class DemoSeeder
         Supply(-4, "ООО «Северная ферма»",
             L("CHK", 6.5m, 144), L("TOM", 4, 110), L("MLK", 6, 100), L("LET", 2, 90), L("GRN", 0.4m, 66));
 
-        // Утреннее списание просрочки (кроме сегодняшнего дня — текущая просрочка остаётся видимой).
+        // Утреннее списание просрочки (кроме сегодняшнего дня - текущая просрочка остаётся видимой).
         var localNow = TimeZones.UtcToLocal(now, tz);
         for (var d = -7; d <= -1; d++)
         {
@@ -146,7 +145,7 @@ public static class DemoSeeder
         foreach (var (at, run) in events.OrderBy(e => e.At))
         {
             try { await run(at); }
-            catch (DomainException) { /* отклонённые операции — часть истории */ }
+            catch (DomainException) { /* отклонённые операции тоже часть истории */ }
             db.ChangeTracker.Clear();
         }
 

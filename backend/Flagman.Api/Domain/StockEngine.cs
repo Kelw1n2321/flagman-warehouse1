@@ -68,7 +68,7 @@ public static class StockEngine
     public static bool IsExpiredInStock(ProductBatch b, DateTime now) =>
         b.State == BatchState.Active && b.QuantityRemaining > 0 && b.ExpiresAt <= now;
 
-    /// <summary>FEFO: сначала партия с самым ранним сроком, при равенстве — более ранняя приёмка.</summary>
+    /// <summary>FEFO: сначала партия с самым ранним сроком, при равенстве - более ранняя приёмка.</summary>
     public static IOrderedEnumerable<ProductBatch> FefoOrder(IEnumerable<ProductBatch> batches) =>
         batches.OrderBy(b => b.ExpiresAt).ThenBy(b => b.ReceivedAt).ThenBy(b => b.Id);
 

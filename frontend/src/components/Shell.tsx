@@ -34,14 +34,14 @@ const SCREEN_SUBTITLES: Record<Screen, string> = {
   settings: 'Пороги сроков, часовой пояс, автосписание и генератор событий.',
 };
 
-// ───────────────────────── Боковое меню ─────────────────────────
+// Боковое меню
 
 interface NavItem {
   screen: Screen;
   icon: IconName;
 }
 
-// Плоский список разделов; «Настройки» прижаты к низу меню.
+// Плоский список разделов; "Настройки" прижаты к низу меню.
 const NAV: NavItem[] = [
   { screen: 'stock', icon: 'box' },
   { screen: 'orders', icon: 'receipt' },
@@ -125,7 +125,7 @@ export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed
   );
 }
 
-// ───────────────────────── Заголовок экрана ─────────────────────────
+// Заголовок экрана
 
 const PRIMARY_ACTION: Partial<Record<Screen, { label: string; icon: IconName; to: [Screen, string?] }>> = {
   stock: { label: 'Принять поставку', icon: 'plus', to: ['supplies', 'new'] },
@@ -157,7 +157,7 @@ export function PageHeader({ onMenu }: { onMenu: () => void }) {
         <p>{SCREEN_SUBTITLES[route.screen]}</p>
       </div>
       <div className="pagehead__actions">
-        {/* Сюда экран выносит свои кнопки выдвижных панелей («Фильтры», «Контроль»). */}
+        {/* Сюда экран выносит свои кнопки выдвижных панелей ("Фильтры", "Контроль"). */}
         <div id="topbar-slot" className="pagehead__slot" />
         <span className="datepill" title={`${weekday(now, tz)}, ${dayOfMonth(now, tz)} · время ресторана (${tz})`}>
           <Icon name="calendar" />
@@ -180,7 +180,7 @@ export function PageHeader({ onMenu }: { onMenu: () => void }) {
   );
 }
 
-// ───────────────────────── Нижняя панель (только телефон) ─────────────────────────
+// Нижняя панель (только телефон)
 
 const MOBILE_NAV: { screen: Screen; short: string; icon: IconName }[] = [
   { screen: 'stock', short: 'Склад', icon: 'box' },
@@ -210,7 +210,7 @@ export function BottomNav() {
   );
 }
 
-// ───────────────────────── Рабочая область экрана ─────────────────────────
+// Рабочая область экрана
 
 /** Фильтры | содержимое | правая панель. На узких экранах боковые панели выдвижные. */
 export function Workspace({ sidebar, right, rightLabel = 'Контроль', rightCount, children }: {

@@ -4,8 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Flagman.Api.Services;
 
 /// <summary>
-/// Монитор сроков: партии переходят «норма → скоро → критично → просрочено» с течением времени,
-/// поэтому предупреждения, стоп-лист и автосписание пересчитываются периодически, а не только по действиям.
+/// Раз в N секунд пересчитывает сроки, предупреждения и стоп-лист, потому что продукты портятся сами по себе.
 /// </summary>
 public sealed class ExpiryMonitor(IServiceScopeFactory scopes, ILogger<ExpiryMonitor> logger, IConfiguration config) : BackgroundService
 {
@@ -30,8 +29,7 @@ public sealed class ExpiryMonitor(IServiceScopeFactory scopes, ILogger<ExpiryMon
 }
 
 /// <summary>
-/// Генератор внешних событий (по ТЗ — эмуляция потока заказов и поставок). Выключен по умолчанию,
-/// включается в настройках. Создаёт настоящие заказы и поставки через те же команды, что и интерфейс.
+/// Генератор случайных заказов и поставок для демо. Включается в настройках.
 /// </summary>
 public sealed class EventGenerator(IServiceScopeFactory scopes, ILogger<EventGenerator> logger) : BackgroundService
 {
@@ -69,7 +67,7 @@ public sealed class EventGenerator(IServiceScopeFactory scopes, ILogger<EventGen
         _tick++;
         if (_tick % 6 == 0)
         {
-            // Периодически «приходит» поставка по рекомендациям системы.
+            // Периодически "приходит" поставка по рекомендациям системы.
             var recs = await sp.GetRequiredService<QueryService>().GetSupplyRecommendationsAsync(ct);
             var top = recs.Take(3).ToList();
             if (top.Count > 0)

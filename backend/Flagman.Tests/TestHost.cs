@@ -74,7 +74,7 @@ public sealed class TestHost : IAsyncDisposable
         });
     }
 
-    /// <summary>Принимает поставку: каждая пара (продукт, количество, часы до окончания срока) — отдельная партия.</summary>
+    /// <summary>Принимает поставку: каждая пара (продукт, количество, часы до окончания срока) - отдельная партия.</summary>
     public Task<Supply> ReceiveAsync(params (int ProductId, decimal Qty, double ExpiresInHours)[] lines) =>
         With((w, _) => w.CreateSupplyAsync(new CreateSupplyCommand(null, "Тест", null,
             lines.Select(l => new SupplyLineInput(l.ProductId, l.Qty, Clock.Now.AddHours(l.ExpiresInHours), null, null)).ToList(), true), default));

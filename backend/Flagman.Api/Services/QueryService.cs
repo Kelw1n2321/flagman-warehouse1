@@ -46,7 +46,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         _ => "adjustmentMinus",
     };
 
-    // ───────────── Продукты ─────────────
+    // Продукты
 
     public static ProductDto ToDto(WarehouseSnapshot s, Product p)
     {
@@ -148,7 +148,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         return await MapMovementsAsync(list.Take(Math.Clamp(limit, 1, 500)).ToList(), s, ct);
     }
 
-    // ───────────── Партии ─────────────
+    // Партии
 
     private static Dictionary<int, int> FefoRanks(WarehouseSnapshot s)
     {
@@ -184,7 +184,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         return items.OrderBy(b => b.ExpiresAt).ToList();
     }
 
-    // ───────────── Поставки ─────────────
+    // Поставки
 
     private static SupplyDto ToSupplyDto(Supply x, IReadOnlyDictionary<int, Product> products, IReadOnlyList<SupplyLineDto>? lines) =>
         new(x.Id, x.SupplyNumber, x.Supplier, x.CreatedAt, x.ReceivedAt,
@@ -212,7 +212,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         if (x is null) return null;
         var batches = await db.Batches.AsNoTracking().Where(b => b.SupplyId == id).OrderBy(b => b.Id).ToListAsync(ct);
         var ranks = FefoRanks(s);
-        // Строки и партии сопоставляются в порядке создания (каждая строка → одна партия).
+        // Строки и партии сопоставляются в порядке создания (каждая строка -> одна партия).
         var used = new HashSet<int>();
         var lines = x.Lines.OrderBy(l => l.Id).Select(l =>
         {
@@ -241,7 +241,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             .ToList();
     }
 
-    // ───────────── Блюда, заказы ─────────────
+    // Блюда, заказы
 
     public async Task<IReadOnlyList<DishDto>> GetDishesAsync(bool includeInactive, CancellationToken ct)
     {
@@ -318,7 +318,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         return new OrderCheckDto(e.CanFulfill, reqs, reason);
     }
 
-    // ───────────── Стоп-лист и горячие предложения ─────────────
+    // Стоп-лист и горячие предложения
 
     public async Task<StopListDto> GetStopListAsync(CancellationToken ct)
     {
@@ -381,7 +381,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             "вклад ингредиента = 100 × срочность × (0,35 + 0,65 × покрытие) × (0,5 + 0,5 × объём) × эксклюзивность; приоритет блюда = сумма вкладов");
     }
 
-    // ───────────── Предупреждения ─────────────
+    // Предупреждения
 
     public async Task<IReadOnlyList<AlertDto>> GetAlertsAsync(string? status, int limit, CancellationToken ct)
     {
@@ -401,7 +401,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             .ToList();
     }
 
-    // ───────────── Сводка и настройки ─────────────
+    // Сводка и настройки
 
     public SettingsDto ToSettingsDto(WarehouseSettings s) =>
         new(s.SoonHours, s.CriticalHours, s.AutoWriteOffExpired, s.TimeZone, s.ForecastWindowDays, s.SupplyCoverDays,
@@ -430,7 +430,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             ToSettingsDto(settings));
     }
 
-    // ───────────── Прогноз и статистика ─────────────
+    // Прогноз и статистика
 
     private async Task<Dictionary<int, ProductForecast>> ForecastAsync(WarehouseSnapshot s, IEnumerable<int> productIds, CancellationToken ct)
     {

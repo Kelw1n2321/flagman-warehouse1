@@ -16,12 +16,12 @@ public static class Endpoints
 {
     public static void MapFlagmanApi(this WebApplication app)
     {
-        // Весь API склада — только после входа администратора (см. AuthEndpoints).
+        // Весь API склада - только после входа администратора (см. AuthEndpoints).
         var api = app.MapGroup("/api/v1").WithTags("Флагман").RequireAuthorization();
 
-        // ── Сводка, настройки, события ──
-        // Старый адрес проверки живости Render: запрос без cookie входа получает «ok» без данных склада,
-        // вошедший администратор — сводку, истёкшая сессия — 401.
+        // Сводка, настройки, события
+        // Старый адрес проверки живости Render: запрос без cookie входа получает "ok" без данных склада,
+        // вошедший администратор - сводку, истёкшая сессия - 401.
         api.MapGet("/summary", async (HttpContext http, QueryService q, CancellationToken ct) =>
             http.User.Identity?.IsAuthenticated == true ? Results.Ok(await q.GetSummaryAsync(ct))
             : http.Request.Cookies.ContainsKey("flagman.auth") ? Results.Problem(statusCode: 401, title: "Требуется вход.")
@@ -60,7 +60,7 @@ public static class Endpoints
             finally { bus.Unsubscribe(id); }
         });
 
-        // ── Склад ──
+        // Склад
         api.MapGet("/stock", (string? search, string? category, string? filter, string? sort, QueryService q, CancellationToken ct) =>
             q.GetStockAsync(search, category, filter, sort, ct));
         api.MapGet("/products/{id:int}", async (int id, QueryService q, CancellationToken ct) =>
@@ -78,7 +78,7 @@ public static class Endpoints
         api.MapGet("/movements", (int? productId, string? type, int? limit, QueryService q, CancellationToken ct) =>
             q.GetMovementsAsync(productId, type, limit ?? 100, ct));
 
-        // ── Партии и сроки ──
+        // Партии и сроки
         api.MapGet("/batches", (string? expiry, int? productId, string? category, bool? includeClosed, string? search, QueryService q, CancellationToken ct) =>
             q.GetBatchesAsync(expiry, productId, category, includeClosed ?? false, search, ct));
         api.MapPost("/batches/{id:int}/adjust", async (int id, AdjustRequest r, WarehouseService w, CancellationToken ct) =>
@@ -94,7 +94,7 @@ public static class Endpoints
         api.MapPost("/batches/write-off-expired", async (WarehouseService w, CancellationToken ct) =>
             Results.Ok(new { writtenOff = await w.WriteOffExpiredAsync(false, ct) })).RequireRateLimiting("writes");
 
-        // ── Поставки ──
+        // Поставки
         api.MapGet("/supplies", (string? search, string? status, QueryService q, CancellationToken ct) => q.GetSuppliesAsync(search, status, ct));
         api.MapGet("/supplies/recommendations", (QueryService q, CancellationToken ct) => q.GetSupplyRecommendationsAsync(ct));
         api.MapGet("/supplies/{id:guid}", async (Guid id, QueryService q, CancellationToken ct) =>
@@ -115,7 +115,7 @@ public static class Endpoints
             return Results.Ok(await q.GetSupplyAsync(id, ct));
         }).RequireRateLimiting("writes");
 
-        // ── Блюда ──
+        // Блюда
         api.MapGet("/dishes", (bool? includeInactive, QueryService q, CancellationToken ct) => q.GetDishesAsync(includeInactive ?? false, ct));
         api.MapPut("/dishes/{id:int}", async (int id, UpdateDishCommand cmd, WarehouseService w, CancellationToken ct) =>
         {
@@ -133,7 +133,7 @@ public static class Endpoints
             return q.ToCheckDto(evaluation, snapshot);
         });
 
-        // ── Заказы ──
+        // Заказы
         api.MapGet("/orders", (string? status, string? search, int? limit, QueryService q, CancellationToken ct) =>
             q.GetOrdersAsync(status, search, limit ?? 100, ct));
         api.MapGet("/orders/{id:guid}", async (Guid id, QueryService q, CancellationToken ct) =>
@@ -148,7 +148,7 @@ public static class Endpoints
                 : Results.Json(dto, statusCode: StatusCodes.Status409Conflict);
         }).RequireRateLimiting("writes");
 
-        // ── Стоп-лист, предложения, статистика, предупреждения ──
+        // Стоп-лист, предложения, статистика, предупреждения
         api.MapGet("/stop-list", (QueryService q, CancellationToken ct) => q.GetStopListAsync(ct));
         api.MapGet("/hot-offers", (QueryService q, CancellationToken ct) => q.GetHotOffersAsync(ct));
         api.MapGet("/stats", (int? days, string? category, QueryService q, CancellationToken ct) => q.GetStatsAsync(days ?? 7, category, ct));
@@ -156,7 +156,7 @@ public static class Endpoints
         api.MapPost("/alerts/acknowledge", async (AckRequest r, WarehouseService w, CancellationToken ct) =>
             Results.Ok(new { acknowledged = await w.AcknowledgeAlertsAsync(r.Ids, ct) })).RequireRateLimiting("writes");
 
-        // ── Демо-режим ──
+        // Демо-режим
         api.MapPost("/demo/reset", async (IServiceProvider sp, WriteGate gate, EventBus bus, WarehouseService w, IConfiguration config, CancellationToken ct) =>
         {
             if (!config.GetValue("Demo:AllowReset", true)) return Results.Problem(statusCode: 403, title: "Сброс отключён в этом окружении");

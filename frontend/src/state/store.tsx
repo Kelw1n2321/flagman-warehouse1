@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, ApiError } from '../api/client';
 import type { Summary } from '../api/types';
 
-// ───────── Живые данные: версия состояния склада (SSE) и сводка ─────────
+// Живые данные: версия состояния склада (SSE) и сводка
 
 interface LiveState {
   version: number;
@@ -58,7 +58,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     };
     connect();
     document.addEventListener('visibilitychange', onVisible);
-    // Резервное обновление: сроки «стареют» даже без событий.
+    // Резервное обновление: сроки "стареют" даже без событий.
     const poll = window.setInterval(schedule, 60_000);
     return () => {
       source?.close();
@@ -97,7 +97,7 @@ export function useTz(): string {
   return useLive().summary?.timeZone ?? 'Europe/Moscow';
 }
 
-// ───────── Текущее время (отдельный контекст, чтобы тик не перерисовывал всё дерево) ─────────
+// Текущее время (отдельный контекст, чтобы тик не перерисовывал всё дерево)
 
 const NowContext = createContext<Date>(new Date());
 
@@ -127,7 +127,7 @@ export function useClock(): Date {
   return now;
 }
 
-// ───────── Загрузка данных с перезапросом при изменении склада ─────────
+// Загрузка данных с перезапросом при изменении склада
 
 export interface QueryResult<T> {
   data: T | undefined;
@@ -168,11 +168,10 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && Object.getPrototypeOf(v) === Object.prototype;
 }
 
-// Последний ответ по каждому адресу: при возврате на вкладку данные показываются сразу,
-// а свежие догружаются в фоне (на медленной сети экран не пустеет при каждом переходе).
+// Кэш последних ответов, чтобы при переходе между вкладками данные показывались сразу.
 const queryCache = new Map<string, unknown>();
 
-/** Выход из системы: ответы прежней сессии не должны показаться следующему вошедшему. */
+/** Чистим кэш при выходе. */
 export function clearQueryCache() {
   queryCache.clear();
 }
@@ -205,7 +204,7 @@ export function useQuery<T>(path: string | null): QueryResult<T> {
   useEffect(() => {
     if (path === null) return;
     const ctrl = new AbortController();
-    // Фоновое обновление уже показанных данных не трогает состояние — лишней перерисовки нет.
+    // Фоновое обновление уже показанных данных не трогает состояние - лишней перерисовки нет.
     setState((s) => (s.key === path ? s : { data: queryCache.get(path) as T | undefined, error: null, loading: !queryCache.has(path), key: path }));
     api
       .get<T>(path, ctrl.signal)
@@ -228,7 +227,7 @@ export function useQuery<T>(path: string | null): QueryResult<T> {
   return { data, error: state.key === path ? state.error : null, loading: state.loading, reload };
 }
 
-// ───────── Навигация (hash-роутинг: состояние переживает перезагрузку) ─────────
+// Навигация (hash-роутинг: состояние переживает перезагрузку)
 
 export type Screen =
   | 'stock'
@@ -268,7 +267,7 @@ export function useRoute(): [Route, (screen: Screen, param?: string | null) => v
   return [route, navigate];
 }
 
-// ───────── UI: тосты, подтверждения, карточка продукта ─────────
+// UI: тосты, подтверждения, карточка продукта
 
 export interface Toast {
   id: number;

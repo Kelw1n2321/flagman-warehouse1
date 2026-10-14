@@ -5,9 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Flagman.Api.Services;
 
 /// <summary>
-/// Приводит предупреждения и историю стоп-листа в соответствие с текущим срезом склада.
-/// Условные предупреждения (сроки, остатки, стоп-лист) имеют ключ условия: пока условие выполняется —
-/// существует ровно одно незакрытое предупреждение; когда исчезает — предупреждение закрывается автоматически.
+/// Обновляет предупреждения и историю стоп-листа по текущему состоянию склада.
+/// Пока проблема есть, висит одно предупреждение, когда пропала, оно закрывается само.
 /// </summary>
 public static class AlertReconciler
 {
@@ -83,7 +82,7 @@ public static class AlertReconciler
         });
     }
 
-    /// <returns>Количество созданных и закрытых записей (0 — ничего не изменилось).</returns>
+    /// <returns>Количество созданных и закрытых записей (0 - ничего не изменилось).</returns>
     public static async Task<int> ReconcileAsync(FlagmanDbContext db, WarehouseSnapshot s, CancellationToken ct)
     {
         var changes = 0;

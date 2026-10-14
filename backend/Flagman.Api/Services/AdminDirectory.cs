@@ -7,11 +7,8 @@ namespace Flagman.Api.Services;
 public sealed record AdminAccount(string Id, string Name);
 
 /// <summary>
-/// Список администраторов из настройки <c>Auth:AdminIds</c>: записи через запятую или точку с запятой,
-/// у записи может быть имя — <c>1001:Иван Петров, 1002</c>. Вход — по ID, поэтому ID должен быть
-/// длинным и известным только администратору (это его пароль).
-/// Кроме того, <c>Auth:AdminIdHashes</c> — ID в виде хешей PBKDF2 (<c>pbkdf2-sha256$итерации$соль$хеш:Имя</c>):
-/// их можно держать прямо в appsettings.json публичного репозитория, сам ID из хеша не восстановить.
+/// Список админов. Auth:AdminIds - ID через запятую, после двоеточия можно имя: "1001:Иван, 1002".
+/// Auth:AdminIdHashes - то же самое, но вместо ID хеш PBKDF2, его можно хранить в репозитории.
 /// </summary>
 public sealed class AdminDirectory
 {
@@ -76,7 +73,7 @@ public sealed class AdminDirectory
     {
         var list = new List<AdminAccount>();
         raw = (raw ?? "").Trim();
-        // В поле значения часто вставляют строку целиком: «Auth__AdminIds=1001:Иван».
+        // В поле значения часто вставляют строку целиком: "Auth__AdminIds=1001:Иван".
         var eq = raw.IndexOf('=');
         if (eq > 0 && ConfigKeys.Any(k => string.Equals(raw[..eq].Trim().Replace("__", ":"), k, StringComparison.OrdinalIgnoreCase)))
             raw = raw[(eq + 1)..];

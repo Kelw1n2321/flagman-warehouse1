@@ -142,7 +142,7 @@ export function LoadingBar({ active }: { active: boolean }) {
   return <div className="loading-bar" style={{ visibility: active ? 'visible' : 'hidden' }} aria-hidden />;
 }
 
-/** Обёртка загрузки: первый раз — скелет, потом — данные (перезапрос не мигает). */
+/** Обёртка загрузки: первый раз - скелет, потом - данные (перезапрос не мигает). */
 export function Loadable<T>({
   q,
   children,

@@ -5,9 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Flagman.Api.Data;
 
 /// <summary>
-/// Дописывает колонки, появившиеся после первого запуска, в уже существующую базу.
-/// Схема создаётся через EnsureCreated, который не изменяет существующие таблицы, поэтому
-/// новые необязательные поля добавляются здесь (SQLite — проверкой PRAGMA, PostgreSQL — IF NOT EXISTS).
+/// Добавляет новые колонки в старую базу. EnsureCreated уже созданные таблицы не меняет,
+/// поэтому новые поля добавляются тут вручную.
 /// </summary>
 public static class SchemaPatches
 {
@@ -17,7 +16,7 @@ public static class SchemaPatches
         ("Orders", "Comment", OrderLimits.Comment),
     ];
 
-    // Имена таблиц и колонок — константы этого класса, не пользовательский ввод: интерполяция безопасна,
+    // Имена таблиц и колонок - константы этого класса, не пользовательский ввод: интерполяция безопасна,
     // а параметризовать имена идентификаторов в DDL нельзя.
 #pragma warning disable EF1002
     public static async Task ApplyAsync(FlagmanDbContext db, CancellationToken ct)

@@ -7,7 +7,7 @@ namespace Flagman.Api.Api;
 
 public sealed record LoginRequest(string? Id);
 
-/// <summary>Кто вошёл: имя и хвост ID (сам ID — секрет, на экран целиком не выводится).</summary>
+/// <summary>Кто вошёл: имя и хвост ID (сам ID - секрет, на экран целиком не выводится).</summary>
 public sealed record SessionDto(string Name, string IdHint);
 
 public static class AuthEndpoints

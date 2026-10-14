@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-// Цвета графиков берутся из темы; обе палитры (светлая и тёмная) проверены validate_palette.js на CVD и контраст.
+// Цвета графиков берутся из темы.
 export const SERIES = {
   primary: 'var(--chart-1)',
   secondary: 'var(--chart-2)',

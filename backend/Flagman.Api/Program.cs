@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// База данных: SQLite для демонстрационного режима, PostgreSQL — для производственного (Database:Provider=postgres).
+// База данных: SQLite для демонстрационного режима, PostgreSQL - для производственного (Database:Provider=postgres).
 var provider = builder.Configuration["Database:Provider"] ?? "sqlite";
 builder.Services.AddDbContext<FlagmanDbContext>(o =>
 {
@@ -34,8 +34,7 @@ builder.Services.AddScoped<QueryService>();
 builder.Services.AddHostedService<ExpiryMonitor>();
 builder.Services.AddHostedService<EventGenerator>();
 builder.Services.AddProblemDetails();
-// Сжатие JSON и статики: ответы склада в 5–10 раз меньше, что заметно на медленной сети.
-// Поток событий (text/event-stream) в список типов не входит и уходит без буферизации.
+// Сжатие ответов. SSE сюда не входит, иначе события будут приходить с задержкой.
 builder.Services.AddResponseCompression(o =>
 {
     o.EnableForHttps = true;
@@ -57,7 +56,7 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
 });
 
-// Вход администратора по ID (Auth:AdminIds): после входа — защищённая cookie на 12 часов со скользящим продлением.
+// Вход по ID админа, cookie на 12 часов.
 builder.Services.AddSingleton<AdminDirectory>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
 {
@@ -70,7 +69,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     // API отвечает кодами, а не перенаправлением на страницу входа.
     o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
     o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
-    // ID убрали из настроек — его сессии перестают действовать сразу, а не через 12 часов.
+    // ID убрали из настроек - его сессии перестают действовать сразу, а не через 12 часов.
     o.Events.OnValidatePrincipal = ctx =>
     {
         var admins = ctx.HttpContext.RequestServices.GetRequiredService<AdminDirectory>();
@@ -79,7 +78,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     };
 });
 builder.Services.AddAuthorization();
-// За прокси Render: схема https из X-Forwarded-Proto, чтобы cookie получала флаг Secure.
+// На Render приложение стоит за прокси, берём https из X-Forwarded-Proto.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
@@ -115,13 +114,13 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseDefaultFiles();
-// index.html не кэшируется (иначе после сборки браузер держит старые ассеты), хэшированные ассеты — надолго.
+// index.html не кэшируется (иначе после сборки браузер держит старые ассеты), хэшированные ассеты - надолго.
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl =
         ctx.File.Name == "index.html" ? "no-cache" : "public, max-age=31536000, immutable",
 });
-// Проверка живости для Render — без входа и без данных склада.
+// Проверка живости для Render - без входа и без данных склада.
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapFlagmanAuth();
 app.MapFlagmanApi();

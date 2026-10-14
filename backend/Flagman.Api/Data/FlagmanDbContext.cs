@@ -23,7 +23,7 @@ public sealed class FlagmanDbContext(DbContextOptions<FlagmanDbContext> options)
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
-        // Все моменты времени хранятся в UTC; SQLite теряет Kind — восстанавливаем его при чтении.
+        // Все моменты времени хранятся в UTC; SQLite теряет Kind - восстанавливаем его при чтении.
         builder.Properties<DateTime>().HaveConversion<UtcConverter>();
         builder.Properties<DateTime?>().HaveConversion<NullableUtcConverter>();
         builder.Properties<decimal>().HavePrecision(14, 4);

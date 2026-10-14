@@ -11,7 +11,7 @@ import { useAction, useLive, useNow, useQuery, useTz, useUi } from '../state/sto
 import { DishCard } from '../components/Cards';
 import { matches } from './StockScreen';
 
-// ───────────────────────── Сроки годности ─────────────────────────
+// Сроки годности
 
 const EXPIRY_FILTERS = [
   ['', 'Все партии'],
@@ -153,7 +153,7 @@ function LiveLeft({ expiresAt }: { expiresAt: string }) {
   return <>{h > 0 ? relative(h) : `истёк ${relative(h)}`}</>;
 }
 
-// ───────────────────────── Журнал движения ─────────────────────────
+// Журнал движения
 
 export function JournalScreen() {
   const { route } = useUi();
@@ -196,7 +196,7 @@ export function JournalScreen() {
   );
 }
 
-// ───────────────────────── Предупреждения ─────────────────────────
+// Предупреждения
 
 export function AlertsScreen() {
   const [status, setStatus] = useState('open');
@@ -298,7 +298,7 @@ export function AlertsScreen() {
   );
 }
 
-// ───────────────────────── Блюда и рецептуры ─────────────────────────
+// Блюда и рецептуры
 
 export function DishesScreen() {
   const q = useQuery<Dish[]>('/dishes?includeInactive=true');
@@ -431,7 +431,7 @@ function DishEditor({ dish, onClose }: { dish: Dish | null; onClose: () => void 
   );
 }
 
-// ───────────────────────── Настройки ─────────────────────────
+// Настройки
 
 const ZONES = ['Europe/Kaliningrad', 'Europe/Moscow', 'Europe/Samara', 'Asia/Yekaterinburg', 'Asia/Omsk', 'Asia/Novosibirsk', 'Asia/Krasnoyarsk', 'Asia/Irkutsk', 'Asia/Yakutsk', 'Asia/Vladivostok', 'Asia/Magadan', 'Asia/Kamchatka', 'UTC'];
 

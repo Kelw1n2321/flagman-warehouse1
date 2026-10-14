@@ -20,7 +20,7 @@ function apply(choice: ThemeChoice) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#151518' : '#eceef1');
 }
 
-/** Тема интерфейса: тёмная (по умолчанию), светлая или «как в системе». Выбор хранится в браузере. */
+/** Тема интерфейса: тёмная (по умолчанию), светлая или "как в системе". Выбор хранится в браузере. */
 export function useTheme(): [ThemeChoice, () => void] {
   const [choice, setChoice] = useState<ThemeChoice>(read);
 
@@ -40,7 +40,7 @@ export function useTheme(): [ThemeChoice, () => void] {
         if (next === 'dark') localStorage.removeItem(KEY);
         else localStorage.setItem(KEY, next);
       } catch {
-        /* хранилище недоступно — тема действует до перезагрузки */
+        /* хранилище недоступно - тема действует до перезагрузки */
       }
       return next;
     });

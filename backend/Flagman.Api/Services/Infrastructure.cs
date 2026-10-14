@@ -16,8 +16,7 @@ public sealed class DomainException(int status, string title, IDictionary<string
 }
 
 /// <summary>
-/// Сериализует все изменяющие операции в пределах процесса. Вместе с транзакцией БД и токеном
-/// версии партии гарантирует, что проверка остатка и списание не разделены гонкой.
+/// Изменяющие операции выполняются по одной, чтобы два заказа не списали одно и то же.
 /// </summary>
 public sealed class WriteGate
 {
@@ -86,7 +85,7 @@ public static class TimeZones
         catch { return false; }
     }
 
-    /// <summary>Переводит «настенное» время ресторана (без смещения) в UTC с учётом часового пояса.</summary>
+    /// <summary>Переводит "настенное" время ресторана (без смещения) в UTC с учётом часового пояса.</summary>
     public static DateTime LocalToUtc(DateTime local, TimeZoneInfo tz)
     {
         var unspecified = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);

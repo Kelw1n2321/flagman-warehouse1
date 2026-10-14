@@ -1,6 +1,6 @@
 namespace Flagman.Api.Domain;
 
-/// <summary>Складская позиция (тип продукта). Остаток не хранится здесь — он всегда считается из партий.</summary>
+/// <summary>Складская позиция (тип продукта). Остаток не хранится здесь - он всегда считается из партий.</summary>
 public sealed class Product
 {
     public int Id { get; set; }
@@ -11,7 +11,7 @@ public sealed class Product
     public required string Unit { get; set; }
     /// <summary>Минимально допустимый доступный остаток.</summary>
     public decimal MinStock { get; set; }
-    /// <summary>Срок хранения по умолчанию (часы) — подставляется при приёмке, если срок не указан явно.</summary>
+    /// <summary>Срок хранения по умолчанию (часы) - подставляется при приёмке, если срок не указан явно.</summary>
     public int? DefaultShelfLifeHours { get; set; }
     public string Icon { get; set; } = "📦";
     public bool IsArchived { get; set; }
@@ -58,7 +58,7 @@ public sealed class ProductBatch
     public decimal QuantityReceived { get; set; }
     public decimal QuantityRemaining { get; set; }
     public BatchState State { get; set; }
-    /// <summary>Токен оптимистичной блокировки — защищает от гонок при нескольких экземплярах сервиса.</summary>
+    /// <summary>Токен оптимистичной блокировки - защищает от гонок при нескольких экземплярах сервиса.</summary>
     public int Version { get; set; }
 }
 
@@ -87,9 +87,9 @@ public sealed class Order
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string Number { get; set; }
-    /// <summary>Название от официанта: «Стол 5», «Навынос» — необязательно.</summary>
+    /// <summary>Название от официанта: "Стол 5", "Навынос" - необязательно.</summary>
     public string? Title { get; set; }
-    /// <summary>Пожелания к приготовлению — необязательно.</summary>
+    /// <summary>Пожелания к приготовлению - необязательно.</summary>
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
     public OrderStatus Status { get; set; }
@@ -168,7 +168,7 @@ public sealed class Alert
     public int Id { get; set; }
     public AlertType Type { get; set; }
     public AlertSeverity Severity { get; set; }
-    /// <summary>Ключ условия (например, batch:12:critical) — исключает дубли активных предупреждений.</summary>
+    /// <summary>Ключ условия (например, batch:12:critical) - исключает дубли активных предупреждений.</summary>
     public required string Key { get; set; }
     public int? ProductId { get; set; }
     public int? BatchId { get; set; }
@@ -182,7 +182,7 @@ public sealed class Alert
     public DateTime? ResolvedAt { get; set; }
 }
 
-/// <summary>Интервал нахождения блюда в стоп-листе — для статистики частоты.</summary>
+/// <summary>Интервал нахождения блюда в стоп-листе - для статистики частоты.</summary>
 public sealed class StopListEntry
 {
     public int Id { get; set; }
@@ -195,9 +195,9 @@ public sealed class StopListEntry
 public sealed class WarehouseSettings
 {
     public int Id { get; set; } = 1;
-    /// <summary>Меньше этого числа часов до окончания срока — «скоро истекает».</summary>
+    /// <summary>Меньше этого числа часов до окончания срока - "скоро истекает".</summary>
     public int SoonHours { get; set; } = 72;
-    /// <summary>Меньше этого числа часов — «критический срок».</summary>
+    /// <summary>Меньше этого числа часов - "критический срок".</summary>
     public int CriticalHours { get; set; } = 24;
     public bool AutoWriteOffExpired { get; set; }
     public string TimeZone { get; set; } = "Europe/Moscow";
@@ -232,7 +232,7 @@ public static class Units
 
     public static string Format(decimal quantity, string unit)
     {
-        // Мелкие количества в кг/л показываем в г/мл — так рецептурные нормы читаются естественно.
+        // Мелкие количества в кг/л показываем в г/мл - так рецептурные нормы читаются естественно.
         if (unit is "kg" or "l" && quantity != 0 && Math.Abs(quantity) < 1m)
             return $"{(quantity * 1000m).ToString("0.#", Ru)} {(unit == "kg" ? "г" : "мл")}";
         return $"{quantity.ToString("0.###", Ru)} {Label(unit)}";

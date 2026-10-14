@@ -32,7 +32,7 @@ export function hoursLeft(hours: number): string {
   return `${sign}${d} д${rest ? ` ${rest} ч` : ''}`;
 }
 
-/** «через 5 ч» / «истёк 3 ч назад». */
+/** "через 5 ч" / "истёк 3 ч назад". */
 export function relative(hours: number): string {
   return hours >= 0 ? `через ${hoursLeft(hours)}` : `${hoursLeft(-hours)} назад`;
 }
@@ -57,14 +57,14 @@ export const timeOnly = (iso: string | Date, tz: string) => fmt(tz, { hour: '2-d
 export const weekday = (d: Date, tz: string) => fmt(tz, { weekday: 'short' }).format(d).toUpperCase();
 export const dayOfMonth = (d: Date, tz: string) => fmt(tz, { day: '2-digit' }).format(d);
 
-/** Календарная дата в часовом поясе ресторана (yyyy-mm-dd) — для «сегодня/завтра». */
+/** Календарная дата в часовом поясе ресторана (yyyy-mm-dd) - для "сегодня/завтра". */
 export function localDateKey(d: Date, tz: string): string {
   const parts = fmt(tz, { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-/** «сегодня 18:00», «завтра 09:30», иначе дата — с учётом границ суток в часовом поясе ресторана. */
+/** "сегодня 18:00", "завтра 09:30", иначе дата - с учётом границ суток в часовом поясе ресторана. */
 export function humanDate(iso: string, tz: string, now: Date): string {
   const d = new Date(iso);
   const key = localDateKey(d, tz);
