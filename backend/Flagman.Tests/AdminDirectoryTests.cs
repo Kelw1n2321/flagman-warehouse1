@@ -58,4 +58,15 @@ public class AdminDirectoryTests
             .AddInMemoryCollection([new(key, "Max-7381")]).Build();
         Assert.NotNull(new AdminDirectory(config).Find("Max-7381"));
     }
+
+    [Fact]
+    public void Hashed_ids_match_only_the_original()
+    {
+        var dir = new AdminDirectory(null, AdminDirectory.HashId("FLG-TEST-0001", 1000) + ":Максим");
+        Assert.True(dir.IsConfigured);
+        Assert.Equal("Максим", dir.Find(" FLG-TEST-0001 ")?.Name);
+        Assert.Equal("Максим", dir.Find("FLG-TEST-0001")?.Name); // повторно — из кэша
+        Assert.Null(dir.Find("FLG-TEST-0002"));
+        Assert.Null(dir.Find(""));
+    }
 }
