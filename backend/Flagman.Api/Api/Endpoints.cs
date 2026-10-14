@@ -16,7 +16,8 @@ public static class Endpoints
 {
     public static void MapFlagmanApi(this WebApplication app)
     {
-        var api = app.MapGroup("/api/v1").WithTags("Флагман");
+        // Весь API склада — только после входа администратора (см. AuthEndpoints).
+        var api = app.MapGroup("/api/v1").WithTags("Флагман").RequireAuthorization();
 
         // ── Сводка, настройки, события ──
         api.MapGet("/summary", (QueryService q, CancellationToken ct) => q.GetSummaryAsync(ct));

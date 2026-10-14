@@ -23,6 +23,8 @@ services:
       ConnectionStrings__Postgres: Host=db;Port=5432;Database=flagman;Username=flagman;Password=${POSTGRES_PASSWORD:-flagman}
       Demo__AllowReset: "false"
       Demo__SeedOnStart: "false"
+      # ID администраторов для входа, например ADMIN_IDS="1001:Иван Петров,1002".
+      Auth__AdminIds: ${ADMIN_IDS:?Задайте ADMIN_IDS — ID администраторов для входа}
     ports:
       - "8080:8080"
 

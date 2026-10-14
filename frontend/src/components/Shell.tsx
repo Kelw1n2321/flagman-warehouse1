@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { dayOfMonth, timeOnly, weekday } from '../lib/format';
 import { useTheme } from '../lib/theme';
+import { useAuth } from '../state/auth';
 import { useClock, useLive, useTz, useUi, type Screen } from '../state/store';
 import { Icon, type IconName } from './Icon';
 
@@ -68,7 +69,10 @@ function useBadges(): Partial<Record<Screen, { value: number; tone: 'crit' | 'wa
 export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed: boolean; onCollapse: () => void; open: boolean; onClose: () => void }) {
   const { route, navigate } = useUi();
   const { summary, connected } = useLive();
+  const { session, logout } = useAuth();
   const badges = useBadges();
+  const name = session?.name ?? 'Администратор';
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'АД';
   const storage = summary?.settings.mode === 'postgres' ? 'PostgreSQL' : 'демо-база SQLite';
 
   const item = (n: NavItem) => {
@@ -103,15 +107,18 @@ export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed
       <nav className="appnav__scroll">{NAV.map(item)}</nav>
       <div className="appnav__bottom">
         {item({ screen: 'settings', icon: 'gear' })}
-        <div className="appnav__user" title={`${connected ? 'Склад онлайн, данные обновляются в реальном времени' : 'Нет связи с сервером'} · ${storage}`}>
+        <div className="appnav__user" title={`${name} · ID ${session?.idHint ?? ''} · ${connected ? 'Склад онлайн, данные обновляются в реальном времени' : 'Нет связи с сервером'} · ${storage}`}>
           <span className="appnav__avatar" aria-hidden>
-            АД
+            {initials}
             <i className={`dot ${connected ? 'dot--ok' : 'dot--bad'}`} />
           </span>
           <span className="appnav__who">
-            <b>Администратор</b>
-            <span>{connected ? 'Рабочая смена' : 'Нет связи'}</span>
+            <b>{name}</b>
+            <span>{connected ? `ID ${session?.idHint ?? ''} · Рабочая смена` : 'Нет связи'}</span>
           </span>
+          <button className="appnav__logout" onClick={() => void logout()} aria-label="Выйти" title="Выйти">
+            <Icon name="logout" />
+          </button>
         </div>
       </div>
     </aside>

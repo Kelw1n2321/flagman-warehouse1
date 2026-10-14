@@ -372,7 +372,8 @@ h3 {
   }
   .appnav__name,
   .appnav__label,
-  .appnav__who {
+  .appnav__who,
+  .appnav__logout {
     display: none;
   }
   .appnav__collapse svg {
@@ -2246,6 +2247,102 @@ table.table {
   background: var(--overlay);
 }
 
+// ═════════════════════ Вход ═════════════════════
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--bg);
+
+  &__wait {
+    color: var(--text-3);
+    font-size: 13.5px;
+  }
+  &__card {
+    width: min(400px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-pop);
+    h1 {
+      margin: 4px 0 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+  }
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  &__lead {
+    margin: -8px 0 0;
+    color: var(--text-2);
+    font-size: 13.5px;
+  }
+  &__msg {
+    padding: 10px 12px;
+    border-radius: var(--r);
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-size: 13px;
+    &--error {
+      background: var(--crit-soft);
+      color: var(--crit);
+    }
+  }
+  &__link {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .input {
+    height: 42px;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+  }
+  .btn {
+    height: 42px;
+    width: 100%;
+  }
+}
+
+.appnav__logout {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--text-3);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+  transition: color 0.12s, background-color 0.12s;
+  svg {
+    width: 17px;
+    height: 17px;
+  }
+  &:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+}
+
 // ═════════════════════ Адаптивность ═════════════════════
 // Правая панель «Контроль» выдвигается, чтобы на ноутбуке хватало места карточкам.
 @media (max-width: 1500px) {
@@ -2296,6 +2393,7 @@ table.table {
     .appnav__name,
     .appnav__label,
     .appnav__who,
+    .appnav__logout,
     .appnav__collapse {
       display: none;
     }
@@ -2348,6 +2446,9 @@ table.table {
     }
     .appnav__who {
       display: flex;
+    }
+    .appnav__logout {
+      display: grid;
     }
     .appnav__item {
       justify-content: flex-start;

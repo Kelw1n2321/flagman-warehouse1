@@ -171,6 +171,12 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 // Последний ответ по каждому адресу: при возврате на вкладку данные показываются сразу,
 // а свежие догружаются в фоне (на медленной сети экран не пустеет при каждом переходе).
 const queryCache = new Map<string, unknown>();
+
+/** Выход из системы: ответы прежней сессии не должны показаться следующему вошедшему. */
+export function clearQueryCache() {
+  queryCache.clear();
+}
+
 const CACHE_LIMIT = 60;
 
 function remember(path: string, data: unknown) {

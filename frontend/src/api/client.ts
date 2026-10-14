@@ -1,5 +1,8 @@
 const BASE = '/api/v1';
 
+/** Событие окна: сервер ответил 401 — сессия истекла или ID убрали из настроек, нужен повторный вход. */
+export const UNAUTHORIZED_EVENT = 'flagman:unauthorized';
+
 /** Ошибка API с текстом из ProblemDetails и ошибками по полям. */
 export class ApiError extends Error {
   constructor(
@@ -34,6 +37,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   const text = await res.text();
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     const problem = (data ?? {}) as { title?: string; errors?: Record<string, string[]> };
     throw new ApiError(problem.title ?? `Ошибка ${res.status}`, res.status, problem.errors ?? {}, data);
   }

@@ -34,6 +34,8 @@ const PATHS = {
   calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
   filter: 'M4 6h16M7 12h10M10 18h4',
   layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
+  logout: 'M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10',
+  lock: 'M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3',
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -5,7 +5,7 @@ services:
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/v1/summary
+    healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       # Демо-режим: SQLite внутри контейнера, при каждом запуске база заполняется свежей демо-историей.
@@ -15,3 +15,7 @@ services:
         value: "true"
       - key: Demo__AllowReset
         value: "true"
+      # ID администраторов для входа: «1001:Иван Петров, 1002». Значение задаётся в панели Render
+      # (Environment), в репозиторий не попадает.
+      - key: Auth__AdminIds
+        sync: false

@@ -3,12 +3,14 @@ import { ProductModalHost } from './components/ProductModal';
 import { AppSidebar, BottomNav, PageHeader } from './components/Shell';
 import { ConfirmHost, Toasts } from './components/ui';
 import { HotScreen } from './screens/HotScreen';
+import { LoginScreen } from './screens/LoginScreen';
 import { OrdersScreen } from './screens/OrdersScreen';
 import { AlertsScreen, DishesScreen, ExpiryScreen, JournalScreen, SettingsScreen } from './screens/SecondaryScreens';
 import { StatsScreen } from './screens/StatsScreen';
 import { StockScreen } from './screens/StockScreen';
 import { StopListScreen } from './screens/StopListScreen';
 import { SuppliesScreen } from './screens/SuppliesScreen';
+import { AuthProvider, useAuth } from './state/auth';
 import { LiveProvider, NowProvider, UiProvider, useLive, useUi, type Screen } from './state/store';
 
 const SCREENS: Record<Screen, () => JSX.Element> = {
@@ -75,7 +77,10 @@ function Terminal() {
   );
 }
 
-export function App() {
+/** Склад (и его поток событий) открывается только после входа администратора. */
+function Gate() {
+  const { status } = useAuth();
+  if (status !== 'signed-in') return <LoginScreen />;
   return (
     <LiveProvider>
       <NowProvider>
@@ -84,5 +89,13 @@ export function App() {
         </UiProvider>
       </NowProvider>
     </LiveProvider>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   );
 }

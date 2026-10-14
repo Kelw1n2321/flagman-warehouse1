@@ -3,7 +3,9 @@ using System.Threading.RateLimiting;
 using Flagman.Api.Api;
 using Flagman.Api.Data;
 using Flagman.Api.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,9 +51,48 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy("writes", ctx => RateLimitPartition.GetFixedWindowLimiter(
         ctx.Connection.RemoteIpAddress?.ToString() ?? "local",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+    // Подбор ID: не больше 10 попыток входа в минуту с одного адреса.
+    o.AddPolicy("login", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "local",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+});
+
+// Вход администратора по ID (Auth:AdminIds): после входа — защищённая cookie на 12 часов со скользящим продлением.
+builder.Services.AddSingleton<AdminDirectory>();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
+{
+    o.Cookie.Name = "flagman.auth";
+    o.Cookie.HttpOnly = true;
+    o.Cookie.SameSite = SameSiteMode.Strict;
+    o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    o.ExpireTimeSpan = TimeSpan.FromHours(12);
+    o.SlidingExpiration = true;
+    // API отвечает кодами, а не перенаправлением на страницу входа.
+    o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
+    o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
+    // ID убрали из настроек — его сессии перестают действовать сразу, а не через 12 часов.
+    o.Events.OnValidatePrincipal = ctx =>
+    {
+        var admins = ctx.HttpContext.RequestServices.GetRequiredService<AdminDirectory>();
+        if (admins.Find(ctx.Principal?.FindFirst(AuthEndpoints.AdminIdClaim)?.Value) is null) ctx.RejectPrincipal();
+        return Task.CompletedTask;
+    };
+});
+builder.Services.AddAuthorization();
+// За прокси Render: схема https из X-Forwarded-Proto, чтобы cookie получала флаг Secure.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    o.KnownIPNetworks.Clear();
+    o.KnownProxies.Clear();
 });
 
 var app = builder.Build();
+
+if (!app.Services.GetRequiredService<AdminDirectory>().IsConfigured)
+    app.Logger.LogWarning("Не задан ни один ID администратора (Auth:AdminIds / Auth__AdminIds) — войти в систему будет невозможно.");
+
+app.UseForwardedHeaders();
 
 app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
 {
@@ -70,6 +111,8 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
 
 app.UseResponseCompression();
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseDefaultFiles();
 // index.html не кэшируется (иначе после сборки браузер держит старые ассеты), хэшированные ассеты — надолго.
 app.UseStaticFiles(new StaticFileOptions
@@ -77,6 +120,9 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl =
         ctx.File.Name == "index.html" ? "no-cache" : "public, max-age=31536000, immutable",
 });
+// Проверка живости для Render — без входа и без данных склада.
+app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+app.MapFlagmanAuth();
 app.MapFlagmanApi();
 app.MapFallbackToFile("index.html", new StaticFileOptions
 {
