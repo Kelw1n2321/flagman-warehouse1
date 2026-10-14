@@ -14,7 +14,21 @@ public sealed class AdminDirectory
 {
     private readonly IReadOnlyList<AdminAccount> _admins;
 
-    public AdminDirectory(IConfiguration config) : this(config["Auth:AdminIds"]) { }
+    /// <summary>Имена переменной, которые принимаются (регистр не важен): основное и частые варианты набора.</summary>
+    public static readonly string[] ConfigKeys = ["Auth:AdminIds", "Auth_AdminIds", "AUTH_ADMIN_IDS", "ADMIN_IDS", "AdminIds"];
+
+    public AdminDirectory(IConfiguration config) : this(FromConfig(config)) { }
+
+    /// <summary>Первое непустое значение среди <see cref="ConfigKeys"/>, а также переменные окружения с пробелами в имени.</summary>
+    public static string? FromConfig(IConfiguration config)
+    {
+        foreach (var key in ConfigKeys)
+            if (!string.IsNullOrWhiteSpace(config[key])) return config[key];
+        foreach (var (key, value) in config.AsEnumerable())
+            if (!string.IsNullOrWhiteSpace(value) && ConfigKeys.Any(k => string.Equals(key.Trim().Replace("__", ":"), k, StringComparison.OrdinalIgnoreCase)))
+                return value;
+        return null;
+    }
 
     public AdminDirectory(string? raw)
     {
@@ -26,7 +40,13 @@ public sealed class AdminDirectory
     public static IReadOnlyList<AdminAccount> Parse(string? raw)
     {
         var list = new List<AdminAccount>();
-        foreach (var entry in (raw ?? "").Split([',', ';', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        raw = (raw ?? "").Trim();
+        // В поле значения часто вставляют строку целиком: «Auth__AdminIds=1001:Иван».
+        var eq = raw.IndexOf('=');
+        if (eq > 0 && ConfigKeys.Any(k => string.Equals(raw[..eq].Trim().Replace("__", ":"), k, StringComparison.OrdinalIgnoreCase)))
+            raw = raw[(eq + 1)..];
+        raw = raw.Trim().Trim('"', '\'', '«', '»').Trim();
+        foreach (var entry in raw.Split([',', ';', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
         {
             var sep = entry.IndexOf(':');
             var id = (sep < 0 ? entry : entry[..sep]).Trim();

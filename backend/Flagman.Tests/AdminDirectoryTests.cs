@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Flagman.Api.Services;
 
 namespace Flagman.Tests;
@@ -34,5 +35,27 @@ public class AdminDirectoryTests
         var dir = new AdminDirectory((string?)null);
         Assert.False(dir.IsConfigured);
         Assert.Null(dir.Find("anything"));
+    }
+
+    [Theory]
+    [InlineData("Auth__AdminIds=Max-7381:Максим")]
+    [InlineData("\"Max-7381:Максим\"")]
+    [InlineData("  Max-7381 : Максим  ")]
+    public void Tolerates_pasted_key_and_quotes(string raw)
+    {
+        var a = Assert.Single(AdminDirectory.Parse(raw));
+        Assert.Equal(("Max-7381", "Максим"), (a.Id, a.Name));
+    }
+
+    [Theory]
+    [InlineData("Auth:AdminIds")]
+    [InlineData("Auth_AdminIds")]
+    [InlineData("ADMIN_IDS")]
+    [InlineData("auth:adminids ")]
+    public void Reads_common_variable_names(string key)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection([new(key, "Max-7381")]).Build();
+        Assert.NotNull(new AdminDirectory(config).Find("Max-7381"));
     }
 }

@@ -90,7 +90,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 var app = builder.Build();
 
 if (!app.Services.GetRequiredService<AdminDirectory>().IsConfigured)
-    app.Logger.LogWarning("Не задан ни один ID администратора (Auth:AdminIds / Auth__AdminIds) — войти в систему будет невозможно.");
+    app.Logger.LogWarning("Не задан ни один ID администратора (Auth__AdminIds) — войти в систему будет невозможно. Переменные окружения со словом admin: {Names}",
+        string.Join(", ", Environment.GetEnvironmentVariables().Keys.Cast<string>().Where(k => k.Contains("admin", StringComparison.OrdinalIgnoreCase)).Select(k => $"«{k}»")) is { Length: > 0 } names ? names : "нет");
 
 app.UseForwardedHeaders();
 
