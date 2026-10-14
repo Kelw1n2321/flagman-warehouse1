@@ -20,7 +20,12 @@ public static class Endpoints
         var api = app.MapGroup("/api/v1").WithTags("Флагман").RequireAuthorization();
 
         // ── Сводка, настройки, события ──
-        api.MapGet("/summary", (QueryService q, CancellationToken ct) => q.GetSummaryAsync(ct));
+        // Старый адрес проверки живости Render: запрос без cookie входа получает «ok» без данных склада,
+        // вошедший администратор — сводку, истёкшая сессия — 401.
+        api.MapGet("/summary", async (HttpContext http, QueryService q, CancellationToken ct) =>
+            http.User.Identity?.IsAuthenticated == true ? Results.Ok(await q.GetSummaryAsync(ct))
+            : http.Request.Cookies.ContainsKey("flagman.auth") ? Results.Problem(statusCode: 401, title: "Требуется вход.")
+            : Results.Ok(new { status = "ok" })).AllowAnonymous();
         api.MapGet("/settings", async (WarehouseService w, QueryService q, CancellationToken ct) => q.ToSettingsDto(await w.GetSettingsAsync(ct)));
         api.MapPut("/settings", async (SettingsCommand cmd, WarehouseService w, QueryService q, CancellationToken ct) =>
             q.ToSettingsDto(await w.UpdateSettingsAsync(cmd, ct))).RequireRateLimiting("writes");
