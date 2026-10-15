@@ -73,6 +73,8 @@ public static class DemoSeeder
         await SeedAsync(sp, ct);
     }
 
+    private const string Shift = "Смена (демо)";
+
     public static async Task SeedAsync(IServiceProvider sp, CancellationToken ct)
     {
         var db = sp.GetRequiredService<FlagmanDbContext>();
@@ -126,7 +128,7 @@ public static class DemoSeeder
         for (var d = -7; d <= -1; d++)
         {
             var at = TimeZones.LocalToUtc(localNow.Date.AddDays(d).AddHours(8), tz);
-            if (at > H(-170)) events.Add((at, t => warehouse.WriteOffExpiredAsync(false, ct, t)));
+            if (at > H(-170)) events.Add((at, t => warehouse.WriteOffExpiredAsync(false, ct, t, Shift)));
         }
 
         // Поток заказов: детерминированный, примерно 20 заказов в день с 11:00 до 23:00.
@@ -141,6 +143,17 @@ public static class DemoSeeder
             if (at <= H(-170) || at >= H(-0.4)) continue;
             events.Add((at, t => warehouse.PlaceOrderAsync(lines, "seed", ct, t)));
         }
+
+        // Заявки поставщика: одна вчерашняя принята частично (18 из 20 кг), две ждут решения менеджера.
+        var farmer = sp.GetService<AdminDirectory>()?.Accounts.FirstOrDefault(a => a.Role == Roles.Supplier) is { Key: not null } acc
+            ? (acc.Key, acc.Name) : ("demo:farmer", "ООО Фермер");
+        string Day(double hoursFromNow) => TimeZones.UtcToLocal(H(hoursFromNow), tz).ToString("yyyy-MM-dd");
+        SupplierRequestLineInput R(string sku, decimal qty, double expiresInHours) => new(id[sku], qty, Day(expiresInHours));
+        SupplierRequest? yesterday = null;
+        events.Add((H(-28), async t => yesterday = await warehouse.CreateSupplierRequestAsync(
+            new SupplierRequestCommand([R("CHK", 20, 150)], "Курица охлаждённая, привезём утром"), farmer.Item1, farmer.Item2, ct, t)));
+        events.Add((H(-26), t => warehouse.AcceptSupplierRequestAsync(yesterday!.Id,
+            new AcceptSupplierRequestCommand([new AcceptLineInput(yesterday.Lines[0].Id, 18)]), "Менеджер (демо)", ct, t)));
 
         foreach (var (at, run) in events.OrderBy(e => e.At))
         {
@@ -157,6 +170,20 @@ public static class DemoSeeder
         // Черновик поставки, которую можно принять в интерфейсе: вернёт блюда из стоп-листа.
         await warehouse.CreateSupplyAsync(new CreateSupplyCommand(null, "ИП Рыбный двор", "Ожидается к 09:00",
             [L("FSH", 4, 70), L("CUC", 3, 110)], false), ct, H(-0.2));
+
+        await warehouse.CreateSupplierRequestAsync(new SupplierRequestCommand(
+            [R("CHK", 20, 130), R("CRM", 5, 100)], "Привезём завтра до 10:00"), farmer.Item1, farmer.Item2, ct, H(-1.5));
+        await warehouse.CreateSupplierRequestAsync(new SupplierRequestCommand(
+            [R("FSH", 4, 80), R("GRN", 0.5m, 60)], null), farmer.Item1, farmer.Item2, ct, H(-0.5));
+        db.ChangeTracker.Clear();
+
+        // Порча, которую можно вернуть из корзины, и сезонное блюдо, закреплённое менеджером.
+        var tomato = await db.Batches.AsNoTracking().Where(b => b.ProductId == id["TOM"] && b.State == BatchState.Active && b.QuantityRemaining >= 1)
+            .OrderByDescending(b => b.ExpiresAt).FirstOrDefaultAsync(ct);
+        if (tomato is not null) await warehouse.WriteOffBatchAsync(tomato.Id, 0.5m, "Помялись при разгрузке", ct, H(-1), Shift);
+        var draniki = await db.Dishes.AsNoTracking().FirstAsync(d => d.Name == "Драники", ct);
+        await warehouse.SetHotOverrideAsync(draniki.Id, new HotOverrideCommand("pin", "Сезонное: осеннее меню", Day(24 * 7)), "Менеджер (демо)", ct, H(-2));
+        db.ChangeTracker.Clear();
 
         // Старые предупреждения считаем уже просмотренными сменой.
         var staleBefore = H(-12);
