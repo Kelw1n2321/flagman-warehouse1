@@ -109,3 +109,9 @@ public sealed record SupplierRequestDto(Guid Id, string Number, string SupplierN
 
 public sealed record TrashItemDto(int Id, int BatchId, string BatchCode, int ProductId, string ProductName, string Unit, string Category,
     decimal Quantity, string Kind, string Reason, DateTime DeletedAt, string DeletedBy, DateTime BatchExpiresAt, bool BatchExpired);
+
+/// <summary>Блюдо в рейтинге продаж. Daily - порции по дням периода, TrendPercent - к прошлому такому же периоду (null, если тогда не продавалось).</summary>
+public sealed record TopDishDto(int DishId, string Name, string Category, int Rank, int Servings, int Orders, double Share,
+    int PrevServings, double? TrendPercent, IReadOnlyList<int> Daily, bool IsActive, int MaxServings, bool InStopList, string? LimitingProductName);
+public sealed record TopDishesDto(int Days, DateTime From, int TotalServings, int TotalOrders, IReadOnlyList<string> DayLabels,
+    IReadOnlyList<TopDishDto> Items, IReadOnlyList<string> Categories);

@@ -11,6 +11,7 @@ import { StockScreen } from './screens/StockScreen';
 import { StopListScreen } from './screens/StopListScreen';
 import { SuppliesScreen } from './screens/SuppliesScreen';
 import { TrashScreen } from './screens/TrashScreen';
+import { TopDishesScreen } from './screens/TopDishesScreen';
 import { homeScreen } from './lib/roles';
 import { AuthProvider, useAuth } from './state/auth';
 import { LiveProvider, NowProvider, UiProvider, useLive, useUi, type Screen } from './state/store';
@@ -27,6 +28,7 @@ const SCREENS: Record<Screen, () => JSX.Element> = {
   alerts: AlertsScreen,
   dishes: DishesScreen,
   trash: TrashScreen,
+  top: TopDishesScreen,
   settings: SettingsScreen,
 };
 

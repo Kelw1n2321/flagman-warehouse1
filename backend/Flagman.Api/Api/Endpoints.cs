@@ -103,6 +103,9 @@ public static class Endpoints
         mgr.MapPost("/batches/write-off-expired", async (ClaimsPrincipal u, WarehouseService w, CancellationToken ct) =>
             Results.Ok(new { writtenOff = await w.WriteOffExpiredAsync(false, ct, actor: Actor(u)) })).RequireRateLimiting("writes");
 
+        // Ходовые блюда: аналитика продаж, только менеджер
+        mgr.MapGet("/top-dishes", (int? days, string? category, QueryService q, CancellationToken ct) => q.GetTopDishesAsync(days ?? 7, category, ct));
+
         // Корзина списаний
         mgr.MapGet("/trash", (string? kind, string? search, QueryService q, CancellationToken ct) => q.GetTrashAsync(kind, search, ct));
         mgr.MapPost("/trash/{id:int}/restore", async (int id, ClaimsPrincipal u, WarehouseService w, CancellationToken ct) =>

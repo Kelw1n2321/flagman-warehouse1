@@ -242,9 +242,10 @@ export type Screen =
   | 'alerts'
   | 'dishes'
   | 'trash'
+  | 'top'
   | 'settings';
 
-const SCREENS: Screen[] = ['stock', 'supplies', 'orders', 'stop-list', 'hot', 'stats', 'expiry', 'journal', 'alerts', 'dishes', 'trash', 'settings'];
+const SCREENS: Screen[] = ['stock', 'supplies', 'orders', 'stop-list', 'hot', 'stats', 'expiry', 'journal', 'alerts', 'dishes', 'trash', 'top', 'settings'];
 
 export interface Route {
   screen: Screen;

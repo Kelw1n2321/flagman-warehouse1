@@ -20,6 +20,7 @@ export const SCREEN_TITLES: Record<Screen, string> = {
   alerts: 'Предупреждения',
   dishes: 'Блюда и рецептуры',
   trash: 'Корзина',
+  top: 'Ходовые блюда',
   settings: 'Настройки',
 };
 
@@ -35,6 +36,7 @@ const SCREEN_SUBTITLES: Record<Screen, string> = {
   alerts: 'Текущие предупреждения и история: условия закрываются автоматически.',
   dishes: 'Состав блюд на порцию. Изменение рецептуры сразу пересчитывает стоп-лист.',
   trash: 'Списанное за всё время: можно вернуть на склад или удалить навсегда.',
+  top: 'Какие блюда продаются лучше всего и хватит ли на них продуктов.',
   settings: 'Пороги сроков, часовой пояс, автосписание и генератор событий.',
 };
 
@@ -53,6 +55,7 @@ const NAV: NavItem[] = [
   { screen: 'dishes', icon: 'chef' },
   { screen: 'stop-list', icon: 'stop' },
   { screen: 'hot', icon: 'flame' },
+  { screen: 'top', icon: 'trend' },
   { screen: 'expiry', icon: 'clock' },
   { screen: 'alerts', icon: 'bell' },
   { screen: 'journal', icon: 'list' },

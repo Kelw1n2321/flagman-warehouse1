@@ -55,7 +55,7 @@ public sealed class AuthorizationTests : IClassFixture<AuthorizationTests.App>
         var waiter = await LoginAsync("w1");
         foreach (var path in new[] { "/api/v1/dishes", "/api/v1/hot-offers", "/api/v1/stop-list", "/api/v1/orders", "/api/v1/summary" })
             Assert.Equal(HttpStatusCode.OK, (await waiter.GetAsync(path)).StatusCode);
-        foreach (var path in new[] { "/api/v1/stock", "/api/v1/trash", "/api/v1/supplies", "/api/v1/settings", "/api/v1/supplier-requests" })
+        foreach (var path in new[] { "/api/v1/stock", "/api/v1/trash", "/api/v1/supplies", "/api/v1/settings", "/api/v1/supplier-requests", "/api/v1/top-dishes" })
             Assert.Equal(HttpStatusCode.Forbidden, (await waiter.GetAsync(path)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await waiter.GetAsync("/api/v1/supplier/products")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
@@ -70,7 +70,7 @@ public sealed class AuthorizationTests : IClassFixture<AuthorizationTests.App>
         Assert.DoesNotContain("productCount", await supplier.GetStringAsync("/api/v1/summary"));
 
         var manager = await LoginAsync("m1");
-        foreach (var path in new[] { "/api/v1/stock", "/api/v1/trash", "/api/v1/supplier-requests", "/api/v1/hot-offers" })
+        foreach (var path in new[] { "/api/v1/stock", "/api/v1/trash", "/api/v1/supplier-requests", "/api/v1/hot-offers", "/api/v1/top-dishes" })
             Assert.Equal(HttpStatusCode.OK, (await manager.GetAsync(path)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await manager.GetAsync("/api/v1/supplier/requests")).StatusCode);
 

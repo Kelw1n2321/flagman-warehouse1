@@ -392,6 +392,68 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             "вклад ингредиента = 100 × срочность × (0,35 + 0,65 × покрытие) × (0,5 + 0,5 × объём) × эксклюзивность; приоритет блюда = сумма вкладов");
     }
 
+    // Ходовые блюда
+
+    /// <summary>
+    /// Рейтинг блюд по проданным порциям за последние N дней (по времени ресторана). Считаются только выполненные заказы.
+    /// Для сравнения берётся предыдущий период такой же длины.
+    /// </summary>
+    public async Task<TopDishesDto> GetTopDishesAsync(int days, string? category, CancellationToken ct)
+    {
+        days = Math.Clamp(days, 1, 90);
+        var settings = await warehouse.GetSettingsAsync(ct);
+        var s = await warehouse.LoadSnapshotAsync(Now, ct, thresholds: settings.Thresholds);
+        var tz = TimeZones.Resolve(settings.TimeZone);
+        var localToday = TimeZones.UtcToLocal(s.Now, tz).Date;
+        var firstDay = localToday.AddDays(-(days - 1));
+        var from = TimeZones.LocalToUtc(firstDay, tz);
+        var prevFrom = TimeZones.LocalToUtc(firstDay.AddDays(-days), tz);
+
+        var orders = (await db.Orders.AsNoTracking().Include(o => o.Lines)
+                .Where(o => o.Status == OrderStatus.Completed).ToListAsync(ct))
+            .Where(o => o.CreatedAt >= prevFrom && o.CreatedAt <= s.Now).ToList();
+        var lines = orders.SelectMany(o => o.Lines.Select(l => (l.DishId, l.Servings, o.Id, o.CreatedAt))).ToList();
+        var current = lines.Where(l => l.CreatedAt >= from).ToList();
+        var previous = lines.Where(l => l.CreatedAt < from).ToList();
+
+        var dishes = await db.Dishes.AsNoTracking().ToDictionaryAsync(d => d.Id, ct);
+        var sold = current.Select(l => l.DishId).ToHashSet();
+        var openStops = await db.StopListEntries.AsNoTracking().Where(e => e.EndedAt == null).Select(e => e.DishId).ToListAsync(ct);
+        // В рейтинге все блюда меню (и непроданные - внизу) плюс выключенные, если их успели продать за период.
+        var candidates = dishes.Values.Where(d => d.IsActive || sold.Contains(d.Id))
+            .Where(d => string.IsNullOrWhiteSpace(category) || d.Category == category).ToList();
+        var totalServings = current.Where(l => candidates.Any(d => d.Id == l.DishId)).Sum(l => l.Servings);
+
+        var rows = candidates.Select(d =>
+        {
+            var mine = current.Where(l => l.DishId == d.Id).ToList();
+            var servings = mine.Sum(l => l.Servings);
+            var prev = previous.Where(l => l.DishId == d.Id).Sum(l => l.Servings);
+            var daily = Enumerable.Range(0, days)
+                .Select(i => mine.Where(l => TimeZones.UtcToLocal(l.CreatedAt, tz).Date == firstDay.AddDays(i)).Sum(l => l.Servings)).ToList();
+            var availability = s.DishAvailability.GetValueOrDefault(d.Id);
+            return new
+            {
+                Dish = d, Servings = servings, Orders = mine.Select(l => l.Id).Distinct().Count(), Prev = prev, Daily = daily,
+                MaxServings = availability?.MaxServings ?? 0,
+                Limiting = availability?.LimitingProductId is { } lp ? s.Products[lp].Name : null,
+            };
+        })
+        .OrderByDescending(r => r.Servings).ThenByDescending(r => r.Orders).ThenBy(r => r.Dish.Name)
+        .ToList();
+
+        var items = rows.Select((r, i) => new TopDishDto(r.Dish.Id, r.Dish.Name, r.Dish.Category, i + 1, r.Servings, r.Orders,
+            totalServings == 0 ? 0 : Math.Round((double)r.Servings / totalServings, 4), r.Prev,
+            r.Prev == 0 ? null : Math.Round((r.Servings - r.Prev) * 100.0 / r.Prev, 1),
+            r.Daily, r.Dish.IsActive, r.MaxServings, openStops.Contains(r.Dish.Id), r.Limiting)).ToList();
+
+        return new TopDishesDto(days, from, totalServings,
+            current.Where(l => candidates.Any(d => d.Id == l.DishId)).Select(l => l.Id).Distinct().Count(),
+            Enumerable.Range(0, days).Select(i => firstDay.AddDays(i).ToString("dd.MM")).ToList(),
+            items,
+            dishes.Values.Where(d => d.IsActive).Select(d => d.Category).Where(c => c.Length > 0).Distinct().Order().ToList());
+    }
+
     // Корзина
 
     public async Task<IReadOnlyList<TrashItemDto>> GetTrashAsync(string? kind, string? search, CancellationToken ct)

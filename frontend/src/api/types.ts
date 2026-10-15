@@ -474,3 +474,32 @@ export interface TrashItem {
   batchExpiresAt: string;
   batchExpired: boolean;
 }
+
+export interface TopDish {
+  dishId: number;
+  name: string;
+  category: string;
+  rank: number;
+  servings: number;
+  orders: number;
+  /** Доля от всех проданных порций за период, 0..1. */
+  share: number;
+  prevServings: number;
+  /** Изменение к прошлому такому же периоду в процентах; null - тогда не продавалось. */
+  trendPercent: number | null;
+  daily: number[];
+  isActive: boolean;
+  maxServings: number;
+  inStopList: boolean;
+  limitingProductName: string | null;
+}
+
+export interface TopDishes {
+  days: number;
+  from: string;
+  totalServings: number;
+  totalOrders: number;
+  dayLabels: string[];
+  items: TopDish[];
+  categories: string[];
+}
