@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../api/client';
 import type { SupplierProduct, SupplierRequest } from '../api/types';
 import { Icon } from '../components/Icon';
+import { LogoMark, Wordmark } from '../components/Logo';
 import { Tag } from '../components/ui';
 import { dateShort, localDateKey, qty, unitLabel } from '../lib/format';
 import { useTheme } from '../lib/theme';
@@ -25,7 +26,7 @@ export function SupplierApp() {
 function Gate() {
   const { status, session } = useAuth();
   if (status !== 'signed-in' || !session)
-    return <LoginScreen title="Кабинет поставщика" lead="Введите ID поставщика, чтобы отправить заявку на поставку." brand="Флагман · поставщикам" />;
+    return <LoginScreen title="Кабинет поставщика" lead="Введите ID поставщика, чтобы отправить заявку на поставку." brand="для поставщиков" />;
   return <SupplierHome />;
 }
 
@@ -62,10 +63,12 @@ function SupplierHome() {
     <div className="portal">
       <header className="portal__head">
         <span className="appnav__logo" aria-hidden>
-          <Icon name="layers" />
+          <LogoMark />
         </span>
         <div className="portal__title">
-          <b>Кабинет поставщика</b>
+          <b>
+            <Wordmark /> · кабинет поставщика
+          </b>
           <span>{session?.name}</span>
         </div>
         <span className="spacer" />

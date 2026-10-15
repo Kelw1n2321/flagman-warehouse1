@@ -1,4 +1,4 @@
-// Дизайн-система "Флагман": тёмный рабочий дашборд (по умолчанию) и светлый вариант на тех же токенах.
+// Дизайн-система "Свежачок!": тёмный рабочий дашборд (по умолчанию) и светлый вариант на тех же токенах.
 // Правила - в DESIGN.md. Интерфейс монохромный: действие и выделение - светлым (в тёмной теме) или
 // тёмным (в светлой). Цвет несёт только смысл: зелёный - норма, жёлтый - предупреждение, красный - критично.
 
@@ -42,6 +42,10 @@
 
   --overlay: rgba(0, 0, 0, 0.62);
   --shadow-pop: 0 18px 48px rgba(0, 0, 0, 0.55);
+  // Логотип: в тёмной теме тёмно-зелёные части светлеют, иначе их не видно.
+  --brand-ink: #e9f1e6;
+  --brand-leaf: #7cc243;
+  --brand-vein: #0d0d0f;
 }
 
 :root[data-theme='light'] {
@@ -83,6 +87,9 @@
 
   --overlay: rgba(16, 20, 28, 0.45);
   --shadow-pop: 0 18px 44px rgba(16, 24, 40, 0.18);
+  --brand-ink: #1c4a2a;
+  --brand-leaf: #6fb83a;
+  --brand-vein: #f3f4f6;
 }
 
 :root {
@@ -201,18 +208,14 @@ h3 {
     padding: 0 4px 12px;
   }
   &__logo {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--r-sm);
-    background: var(--surface-2);
-    border: 1px solid var(--border-strong);
-    color: var(--text);
+    width: 34px;
+    height: 34px;
     display: grid;
     place-items: center;
     flex: none;
     svg {
-      width: 17px;
-      height: 17px;
+      width: 34px;
+      height: 34px;
     }
   }
   &__name {
@@ -2441,6 +2444,60 @@ table.table {
       grid-column: 1 / -1;
     }
   }
+}
+
+// Логотип
+.logo-mark {
+  &__hat {
+    fill: none;
+    stroke: var(--brand-ink);
+  }
+  &__ink {
+    fill: var(--brand-ink);
+  }
+  &__leaf {
+    fill: var(--brand-leaf);
+  }
+  &__vein {
+    stroke: var(--brand-vein);
+  }
+}
+
+.wordmark {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--brand-ink);
+  white-space: nowrap;
+  &__bang {
+    color: var(--brand-leaf);
+  }
+}
+
+.login__brand {
+  .appnav__logo,
+  .appnav__logo svg {
+    width: 52px;
+    height: 52px;
+  }
+  .wordmark {
+    font-size: 26px;
+  }
+}
+
+.portal__head .appnav__logo,
+.portal__head .appnav__logo svg {
+  width: 40px;
+  height: 40px;
+}
+
+.appnav__name .wordmark {
+  font-size: 17px;
+}
+
+.login__sub {
+  color: var(--text-3);
+  font-weight: 500;
+  font-size: 13px;
 }
 
 // Адаптивность

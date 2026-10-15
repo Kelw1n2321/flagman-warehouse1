@@ -6,6 +6,7 @@ import { ROLE_LABEL } from '../lib/roles';
 import { useAuth } from '../state/auth';
 import { useClock, useLive, useTz, useUi, type Screen } from '../state/store';
 import { Icon, type IconName } from './Icon';
+import { LogoMark, Wordmark } from './Logo';
 
 export const SCREEN_TITLES: Record<Screen, string> = {
   stock: 'Склад',
@@ -102,9 +103,11 @@ export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed
     <aside className={`appnav ${open ? 'is-open' : ''}`} aria-label="Разделы">
       <div className="appnav__brand">
         <span className="appnav__logo" aria-hidden>
-          <Icon name="layers" />
+          <LogoMark />
         </span>
-        <span className="appnav__name">Флагман</span>
+        <span className="appnav__name">
+          <Wordmark />
+        </span>
         <button className="appnav__collapse" onClick={onCollapse} aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'} title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}>
           <Icon name="chevrons" />
         </button>

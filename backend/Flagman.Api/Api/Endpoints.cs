@@ -23,7 +23,7 @@ public static class Endpoints
         // Весь API склада - только после входа (см. AuthEndpoints).
         // Права: staff - менеджер и официант, mgr - только менеджер. Группы раздельные, потому что
         // политики вложенных групп складываются (И), а не заменяют друг друга.
-        var api = app.MapGroup("/api/v1").WithTags("Флагман");
+        var api = app.MapGroup("/api/v1").WithTags("Свежачок");
         var staff = api.MapGroup("").RequireAuthorization(Policies.Staff);
         var mgr = api.MapGroup("").RequireAuthorization(Policies.Manager);
 

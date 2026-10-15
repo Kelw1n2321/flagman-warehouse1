@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { Icon } from '../components/Icon';
+import { LogoMark, Wordmark } from '../components/Logo';
 import { useAuth } from '../state/auth';
 
 /** Экран входа: сотрудник (или поставщик в своём кабинете) вводит свой ID. */
 export function LoginScreen({
   title = 'Вход в систему',
   lead = 'Менеджер или официант: введите свой ID.',
-  brand = 'Флагман',
+  brand,
 }: { title?: string; lead?: string; brand?: string }) {
   const { status, notice, login, retry } = useAuth();
   const [id, setId] = useState('');
@@ -46,9 +47,10 @@ export function LoginScreen({
       <form className="login__card" onSubmit={submit} noValidate>
         <div className="login__brand">
           <span className="appnav__logo" aria-hidden>
-            <Icon name="layers" />
+            <LogoMark />
           </span>
-          <span>{brand}</span>
+          <Wordmark />
+          {brand && <span className="login__sub">{brand}</span>}
         </div>
         <h1>{title}</h1>
         <p className="login__lead">{lead}</p>
