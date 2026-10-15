@@ -43,8 +43,8 @@ export function ExpiryScreen() {
   const s = summary?.settings;
 
   const writeOffAll = async () => {
-    if (!(await confirm({ title: 'Списать всю просрочку?', text: `Партий с истёкшим сроком: ${counts.expired}. Остаток будет списан с записью в журнал.`, danger: true, confirmLabel: 'Списать' }))) return;
-    await run(() => api.post<{ writtenOff: number }>('/batches/write-off-expired'), (r) => `Списано партий: ${r.writtenOff}`);
+    if (!(await confirm({ title: 'Списать всю просрочку?', text: `Партий с истёкшим сроком: ${counts.expired}. Списанное попадёт в корзину, ошибочное списание можно будет вернуть.`, danger: true, confirmLabel: 'Списать' }))) return;
+    await run(() => api.post<{ writtenOff: number }>('/batches/write-off-expired'), (r) => `Списано в корзину партий: ${r.writtenOff}`);
   };
 
   return (
@@ -301,7 +301,10 @@ export function AlertsScreen() {
 // Блюда и рецептуры
 
 export function DishesScreen() {
-  const q = useQuery<Dish[]>('/dishes?includeInactive=true');
+  const { role } = useUi();
+  const manager = role === 'manager';
+  // Официант смотрит меню без выключенных блюд и без редактирования.
+  const q = useQuery<Dish[]>(manager ? '/dishes?includeInactive=true' : '/dishes');
   const [editing, setEditing] = useState<Dish | 'new' | null>(null);
   const [search, setSearch] = useState('');
 
@@ -310,17 +313,21 @@ export function DishesScreen() {
       sidebar={
         <>
           <SearchBox value={search} onChange={setSearch} placeholder="Найти блюдо…" />
-          <div className="sidebar__scroll">
-            <button className="side-btn side-btn--nav" onClick={() => setEditing('new')}>
-              <Icon name="plus" /> <span style={{ flex: 1 }}>Новое блюдо</span>
-            </button>
-          </div>
+          {manager && (
+            <div className="sidebar__scroll">
+              <button className="side-btn side-btn--nav" onClick={() => setEditing('new')}>
+                <Icon name="plus" /> <span style={{ flex: 1 }}>Новое блюдо</span>
+              </button>
+            </div>
+          )}
         </>
       }
     >
       <div className="toolbar">
         <span className="section-title" style={{ margin: 0 }}>
-          Нажмите на блюдо, чтобы изменить состав. Стоп-лист пересчитается сразу после сохранения.
+          {manager
+            ? 'Нажмите на блюдо, чтобы изменить состав. Стоп-лист пересчитается сразу после сохранения.'
+            : 'Меню и сколько порций каждого блюда можно приготовить сейчас.'}
         </span>
       </div>
       <LoadingBar active={q.loading} />
@@ -332,7 +339,7 @@ export function DishesScreen() {
                 .filter((d) => matches(d, search))
                 .map((d) => (
                   <div key={d.id} style={{ opacity: d.isActive ? 1 : 0.6 }}>
-                    <DishCard d={d} onOpen={() => setEditing(d)} />
+                    <DishCard d={d} onOpen={manager ? () => setEditing(d) : undefined} />
                   </div>
                 ))}
             </div>

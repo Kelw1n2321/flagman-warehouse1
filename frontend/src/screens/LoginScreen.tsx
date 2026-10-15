@@ -3,8 +3,12 @@ import { ApiError } from '../api/client';
 import { Icon } from '../components/Icon';
 import { useAuth } from '../state/auth';
 
-/** Экран входа: администратор вводит свой ID. */
-export function LoginScreen() {
+/** Экран входа: сотрудник (или поставщик в своём кабинете) вводит свой ID. */
+export function LoginScreen({
+  title = 'Вход в систему',
+  lead = 'Менеджер или официант: введите свой ID.',
+  brand = 'Флагман',
+}: { title?: string; lead?: string; brand?: string }) {
   const { status, notice, login, retry } = useAuth();
   const [id, setId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +48,10 @@ export function LoginScreen() {
           <span className="appnav__logo" aria-hidden>
             <Icon name="layers" />
           </span>
-          <span>Флагман</span>
+          <span>{brand}</span>
         </div>
-        <h1>Вход администратора</h1>
-        <p className="login__lead">Введите свой ID, чтобы открыть склад.</p>
+        <h1>{title}</h1>
+        <p className="login__lead">{lead}</p>
 
         {status === 'offline' ? (
           <div className="login__msg login__msg--error" role="alert">
@@ -65,7 +69,7 @@ export function LoginScreen() {
         )}
 
         <label className="field">
-          ID администратора
+          Ваш ID
           <input
             className="input"
             type="password"

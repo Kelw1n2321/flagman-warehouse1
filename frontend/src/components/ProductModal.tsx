@@ -16,6 +16,7 @@ export const MOVEMENT_LABEL: Record<Movement['type'], string> = {
   spoilageWriteOff: 'Списание (порча)',
   adjustmentPlus: 'Корректировка +',
   adjustmentMinus: 'Корректировка −',
+  restore: 'Возврат из корзины',
 };
 
 export function ProductModalHost() {
@@ -386,7 +387,7 @@ function BatchEditDialog({ batch, mode, onClose }: { batch: Batch; mode: 'adjust
     const ok =
       mode === 'adjust'
         ? await run(() => api.post(`/batches/${batch.id}/adjust`, { quantity: v, reason }), 'Остаток партии скорректирован')
-        : await run(() => api.post(`/batches/${batch.id}/write-off`, { quantity: v, reason }), 'Списание проведено');
+        : await run(() => api.post(`/batches/${batch.id}/write-off`, { quantity: v, reason }), 'Списано в корзину, вернуть можно в разделе «Корзина»');
     if (ok) onClose();
   };
 

@@ -55,7 +55,8 @@ export type MovementType =
   | 'expiredWriteOff'
   | 'spoilageWriteOff'
   | 'adjustmentPlus'
-  | 'adjustmentMinus';
+  | 'adjustmentMinus'
+  | 'restore';
 
 export interface Movement {
   id: number;
@@ -260,11 +261,27 @@ export interface HotOffer {
   limitingProductName: string | null;
   summary: string;
   ingredients: HotIngredient[];
+  /** Закреплено менеджером (например, сезонное блюдо). */
+  pinned: boolean;
+  pinNote: string | null;
+  pinnedUntil: string | null;
+}
+
+export interface HiddenOffer {
+  dishId: number;
+  name: string;
+  icon: string;
+  note: string | null;
+  hiddenAt: string;
+  hiddenBy: string;
+  until: string | null;
+  score: number | null;
 }
 
 export interface HotOffers {
   offers: HotOffer[];
   blocked: { dishId: number; name: string; icon: string; atRiskProducts: string[]; missingProducts: string[] }[];
+  hidden: HiddenOffer[];
   formula: string;
 }
 
@@ -317,6 +334,8 @@ export interface Summary {
   hotOffers: number;
   categories: string[];
   settings: Settings;
+  pendingSupplierRequests: number;
+  trashCount: number;
 }
 
 export interface ForecastPoint {
@@ -400,4 +419,58 @@ export interface Stats {
   }[];
   stopForecast: StopForecast[];
   forecastHasData: boolean;
+}
+
+export type SupplierRequestStatus = 'sent' | 'accepted' | 'rejected';
+
+export interface SupplierRequestLine {
+  id: number;
+  productId: number;
+  productName: string;
+  unit: Unit;
+  requestedQuantity: number;
+  acceptedQuantity: number | null;
+  expiresAt: string;
+}
+
+export interface SupplierRequest {
+  id: string;
+  number: string;
+  supplierName: string;
+  createdAt: string;
+  status: SupplierRequestStatus;
+  /** Принята не полностью (по какой-то строке меньше заявленного). */
+  partial: boolean;
+  comment: string | null;
+  decidedAt: string | null;
+  decidedBy: string | null;
+  rejectionReason: string | null;
+  supplyId: string | null;
+  supplyNumber: string | null;
+  lines: SupplierRequestLine[];
+}
+
+export interface SupplierProduct {
+  id: number;
+  name: string;
+  unit: Unit;
+  category: string;
+  defaultShelfLifeHours: number | null;
+}
+
+export interface TrashItem {
+  id: number;
+  batchId: number;
+  batchCode: string;
+  productId: number;
+  productName: string;
+  unit: Unit;
+  category: string;
+  quantity: number;
+  kind: 'expired' | 'spoilage';
+  reason: string;
+  deletedAt: string;
+  deletedBy: string;
+  batchExpiresAt: string;
+  batchExpired: boolean;
 }

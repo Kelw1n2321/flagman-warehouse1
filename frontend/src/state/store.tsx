@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError } from '../api/client';
 import type { Summary } from '../api/types';
+import { can, homeScreen, type Role } from '../lib/roles';
 
 // Живые данные: версия состояния склада (SSE) и сводка
 
@@ -240,9 +241,10 @@ export type Screen =
   | 'journal'
   | 'alerts'
   | 'dishes'
+  | 'trash'
   | 'settings';
 
-const SCREENS: Screen[] = ['stock', 'supplies', 'orders', 'stop-list', 'hot', 'stats', 'expiry', 'journal', 'alerts', 'dishes', 'settings'];
+const SCREENS: Screen[] = ['stock', 'supplies', 'orders', 'stop-list', 'hot', 'stats', 'expiry', 'journal', 'alerts', 'dishes', 'trash', 'settings'];
 
 export interface Route {
   screen: Screen;
@@ -294,6 +296,9 @@ interface UiState {
   openProduct: (id: number | null) => void;
   navigate: (screen: Screen, param?: string | null) => void;
   route: Route;
+  /** Роль вошедшего и проверка доступа к разделу. */
+  role: Role;
+  can: (screen: Screen) => boolean;
   /** Предзаполнение формы поставки (из рекомендаций или карточки продукта). */
   supplyDraft: SupplyDraftLine[] | null;
   startSupply: (lines: SupplyDraftLine[]) => void;
@@ -308,7 +313,7 @@ export interface SupplyDraftLine {
 
 const UiContext = createContext<UiState | null>(null);
 
-export function UiProvider({ children }: { children: ReactNode }) {
+export function UiProvider({ role, children }: { role: Role; children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirmRequest, setConfirm] = useState<ConfirmRequest | null>(null);
   const [productId, setProductId] = useState<number | null>(null);
@@ -344,6 +349,15 @@ export function UiProvider({ children }: { children: ReactNode }) {
     [navigate],
   );
 
+  const canScreen = useCallback((screen: Screen) => can(role, screen), [role]);
+  // Официант не открывает карточку продукта: там остатки, партии и списания.
+  const openProduct = useCallback((id: number | null) => setProductId(role === 'manager' ? id : null), [role]);
+
+  // Раздел недоступен роли (например, официант открыл старую ссылку) - уходим на домашний экран.
+  useEffect(() => {
+    if (!can(role, route.screen)) window.location.replace(`#/${homeScreen(role)}`);
+  }, [role, route.screen]);
+
   const value = useMemo<UiState>(
     () => ({
       toasts,
@@ -353,14 +367,16 @@ export function UiProvider({ children }: { children: ReactNode }) {
       confirmRequest,
       closeConfirm,
       productId,
-      openProduct: setProductId,
+      openProduct,
       navigate,
       route,
+      role,
+      can: canScreen,
       supplyDraft,
       startSupply,
       clearSupplyDraft: () => setSupplyDraft(null),
     }),
-    [toasts, toast, dismissToast, confirm, confirmRequest, closeConfirm, productId, navigate, route, supplyDraft, startSupply],
+    [toasts, toast, dismissToast, confirm, confirmRequest, closeConfirm, productId, openProduct, navigate, route, role, canScreen, supplyDraft, startSupply],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }

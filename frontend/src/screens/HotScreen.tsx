@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import type { HotOffer, HotOffers } from '../api/types';
+import { api } from '../api/client';
+import type { Dish, HotOffer, HotOffers } from '../api/types';
 import { Icon } from '../components/Icon';
 import { Workspace } from '../components/Shell';
-import { Bar, EmptyState, Loadable, LoadingBar } from '../components/ui';
+import { Bar, EmptyState, Loadable, LoadingBar, Modal, Tag } from '../components/ui';
 import { CardHead, memoCard, Meta, Stats } from '../components/Cards';
-import { hoursLeft, qty } from '../lib/format';
-import { useQuery, useUi } from '../state/store';
+import { dateShort, hoursLeft, localDateKey, qty } from '../lib/format';
+import { useAction, useQuery, useTz, useUi } from '../state/store';
 
 const LEVEL = { high: 'Высокий', medium: 'Средний', low: 'Низкий' } as const;
 const LEVEL_TIER = { high: 'critical', medium: 'attention', low: 'info' } as const;
@@ -14,7 +15,11 @@ const LEVEL_TIER = { high: 'critical', medium: 'attention', low: 'info' } as con
 const HotCard = memoCard(function HotCard({ o, rank, selected, onSelect }: { o: HotOffer; rank: number; selected: boolean; onSelect: () => void }) {
   return (
     <button className={`dcard dcard--clickable ${selected ? 'is-selected' : ''}`} onClick={onSelect} aria-pressed={selected}>
-      <CardHead name={o.name} sub={`№${rank} · ${o.score.toLocaleString('ru-RU')} балл.`} tier={LEVEL_TIER[o.level]} status={`Приоритет: ${LEVEL[o.level].toLowerCase()}`} />
+      {o.pinned ? (
+        <CardHead name={o.name} sub={`№${rank} · закреплено менеджером`} tier="info" status="Выбор менеджера" />
+      ) : (
+        <CardHead name={o.name} sub={`№${rank} · ${o.score.toLocaleString('ru-RU')} балл.`} tier={LEVEL_TIER[o.level]} status={`Приоритет: ${LEVEL[o.level].toLowerCase()}`} />
+      )}
       <Stats
         items={[
           { label: 'Продать порций', value: o.recommendedServings, tone: 'warn', title: 'Сколько порций нужно продать, чтобы использовать продукты до конца срока' },
@@ -32,7 +37,11 @@ export function HotScreen() {
   const q = useQuery<HotOffers>('/hot-offers');
   const [selected, setSelected] = useState<number | null>(null);
   const [level, setLevel] = useState<'' | HotOffer['level']>('');
-  const { navigate } = useUi();
+  const [pinning, setPinning] = useState(false);
+  const { navigate, can, role } = useUi();
+  const manager = role === 'manager';
+  const { run, busy } = useAction();
+  const tz = useTz();
   const offers = (q.data?.offers ?? []).filter((o) => !level || o.level === level);
   const current = q.data?.offers.find((o) => o.dishId === selected) ?? offers[0] ?? null;
 
@@ -58,9 +67,16 @@ export function HotScreen() {
           <button className="side-btn side-btn--nav" onClick={() => navigate('orders')}>
             <Icon name="receipt" /> <span style={{ flex: 1 }}>Оформить заказ</span>
           </button>
-          <button className="side-btn side-btn--nav" onClick={() => navigate('expiry')}>
-            <Icon name="clock" /> <span style={{ flex: 1 }}>Сроки годности</span>
-          </button>
+          {can('expiry') && (
+            <button className="side-btn side-btn--nav" onClick={() => navigate('expiry')}>
+              <Icon name="clock" /> <span style={{ flex: 1 }}>Сроки годности</span>
+            </button>
+          )}
+          {manager && (
+            <button className="side-btn side-btn--nav" onClick={() => setPinning(true)}>
+              <Icon name="plus" /> <span style={{ flex: 1 }}>Закрепить блюдо</span>
+            </button>
+          )}
         </div>
       }
       right={<OfferExplain offer={current} formula={q.data?.formula} />}
@@ -111,16 +127,122 @@ export function HotScreen() {
                   </div>
                 </div>
               )}
+              {manager && d.hidden.length > 0 && (
+                <div className="sheet">
+                  <h3>Скрыто менеджером</h3>
+                  <div className="table-wrap">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Блюдо</th>
+                          <th>Пометка</th>
+                          <th>Скрыл</th>
+                          <th className="num">Баллы по расчёту</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.hidden.map((h) => (
+                          <tr key={h.dishId}>
+                            <td>
+                              <b>{h.name}</b>
+                            </td>
+                            <td>{h.note ?? '—'}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              {h.hiddenBy}, {dateShort(h.hiddenAt, tz)}
+                            </td>
+                            <td className="num">{h.score === null ? 'не в расчёте' : h.score.toLocaleString('ru-RU')}</td>
+                            <td style={{ textAlign: 'right' }}>
+                              <button className="btn btn--sm" disabled={busy} onClick={() => run(() => api.del(`/hot-offers/overrides/${h.dishId}`), 'Блюдо снова в расчёте')}>
+                                Вернуть
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Loadable>
       </div>
+      {pinning && <PinDialog onClose={() => setPinning(false)} />}
     </Workspace>
   );
 }
 
+/** Ручное закрепление блюда в горячих предложениях, например сезонного. */
+function PinDialog({ onClose, dish }: { onClose: () => void; dish?: { id: number; name: string } }) {
+  const dishes = useQuery<Dish[]>(dish ? null : '/dishes');
+  const [dishId, setDishId] = useState<number | ''>(dish?.id ?? '');
+  const [note, setNote] = useState('Сезонное');
+  const [until, setUntil] = useState('');
+  const { run, busy } = useAction();
+  const tz = useTz();
+  const save = async () => {
+    if (dishId === '') return;
+    const ok = await run(() => api.put(`/hot-offers/overrides/${dishId}`, { mode: 'pin', note, untilLocal: until || null }), 'Блюдо закреплено');
+    if (ok) onClose();
+  };
+  return (
+    <Modal
+      title="Закрепить блюдо"
+      onClose={onClose}
+      size="sm"
+      footer={
+        <>
+          <button className="btn" onClick={onClose}>
+            Отмена
+          </button>
+          <button className="btn btn--blue" disabled={busy || dishId === ''} onClick={save}>
+            Закрепить
+          </button>
+        </>
+      }
+    >
+      <p className="muted" style={{ margin: 0 }}>
+        Блюдо будет первым в горячих предложениях, даже если у него нет продуктов с истекающим сроком.
+      </p>
+      {dish ? (
+        <b>{dish.name}</b>
+      ) : (
+        <label className="field">
+          Блюдо
+          <select className="select" value={dishId} onChange={(e) => setDishId(e.target.value ? Number(e.target.value) : '')}>
+            <option value="">Выберите блюдо</option>
+            {(dishes.data ?? []).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className="field">
+        Пометка
+        <input className="input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} placeholder="Например: сезонное меню" />
+      </label>
+      <label className="field">
+        Действует до (необязательно)
+        <input className="input" type="date" value={until} min={localDateKey(new Date(), tz)} onChange={(e) => setUntil(e.target.value)} />
+      </label>
+    </Modal>
+  );
+}
+
 function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: string }) {
-  const { openProduct, navigate } = useUi();
+  const { openProduct, navigate, role } = useUi();
+  const manager = role === 'manager';
+  const { run, busy } = useAction();
+  const { confirm } = useUi();
+  const [pinning, setPinning] = useState(false);
+  const tz = useTz();
+  const hide = async (o: HotOffer) => {
+    if (!(await confirm({ title: `Скрыть «${o.name}»?`, text: 'Блюдо пропадёт из горячих предложений, даже если продукты в нём скоро испортятся. Вернуть можно в разделе «Скрыто менеджером».', confirmLabel: 'Скрыть' }))) return;
+    await run(() => api.put(`/hot-offers/overrides/${o.dishId}`, { mode: 'hide' }), 'Блюдо скрыто');
+  };
   return (
     <>
       <div className="rightbar__title">
@@ -139,7 +261,29 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
                 </div>
               </div>
             </div>
+            {offer.pinned && (
+              <div className="row" style={{ gap: 8 }}>
+                <Tag kind="info">Выбор менеджера</Tag>
+                {offer.pinnedUntil && <span className="muted">до {dateShort(offer.pinnedUntil, tz)}</span>}
+              </div>
+            )}
             <p style={{ margin: 0 }}>{offer.summary}</p>
+            {manager && (
+              <div className="row" style={{ gap: 8 }}>
+                {offer.pinned ? (
+                  <button className="btn btn--sm" disabled={busy} onClick={() => run(() => api.del(`/hot-offers/overrides/${offer.dishId}`), 'Закрепление снято')}>
+                    Снять закрепление
+                  </button>
+                ) : (
+                  <button className="btn btn--sm" disabled={busy} onClick={() => setPinning(true)}>
+                    Закрепить
+                  </button>
+                )}
+                <button className="btn btn--sm btn--dark" disabled={busy} onClick={() => hide(offer)}>
+                  Скрыть
+                </button>
+              </div>
+            )}
             {offer.limitingProductName && (
               <p className="muted" style={{ margin: 0, fontSize: 13 }}>
                 Количество порций ограничивает: <b style={{ color: 'var(--text)' }}>{offer.limitingProductName}</b>
@@ -162,9 +306,11 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
                   <Factor label="Объём" value={ing.volume} hint={`${ing.servingsToClear} порц. до полного расхода`} />
                   <Factor label="Эксклюзивность" value={ing.exclusivity} hint={ing.otherDishCount ? `ещё ${ing.otherDishCount} блюд(а)` : 'только это блюдо'} />
                 </div>
-                <button className="btn btn--sm" style={{ marginTop: 6 }} onClick={() => openProduct(ing.productId)}>
-                  Партии продукта
-                </button>
+                {manager && (
+                  <button className="btn btn--sm" style={{ marginTop: 6 }} onClick={() => openProduct(ing.productId)}>
+                    Партии продукта
+                  </button>
+                )}
               </div>
             ))}
             {formula && (
@@ -175,6 +321,7 @@ function OfferExplain({ offer, formula }: { offer: HotOffer | null; formula?: st
           </>
         )}
       </div>
+      {pinning && offer && <PinDialog dish={{ id: offer.dishId, name: offer.name }} onClose={() => setPinning(false)} />}
       <div className="rightbar__foot">
         <span className="muted">Продавайте в первую очередь</span>
         <button className="btn btn--lg btn--blue" onClick={() => navigate('orders')}>

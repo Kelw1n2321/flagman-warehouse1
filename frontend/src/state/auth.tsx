@@ -1,12 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiError, UNAUTHORIZED_EVENT } from '../api/client';
+import type { Role } from '../lib/roles';
 import { clearQueryCache } from './store';
 
-/** Вошедший администратор: имя и хвост ID (сам ID на экран не выводится). */
+/** Вошедший: имя, роль и хвост ID (сам ID на экран не выводится). */
 export interface Session {
   name: string;
   idHint: string;
+  role: Role;
 }
+
+/** Основной сайт (менеджер и официант) или кабинет поставщика. */
+export type Portal = 'staff' | 'supplier';
+
+const fits = (portal: Portal, role: Role) => (portal === 'supplier') === (role === 'supplier');
 
 type AuthStatus = 'checking' | 'anonymous' | 'signed-in' | 'offline';
 
@@ -22,7 +29,7 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ portal = 'staff', children }: { portal?: Portal; children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('checking');
   const [session, setSession] = useState<Session | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -36,6 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .get<Session>('/auth/me')
       .then((s) => {
         if (!alive) return;
+        // Cookie общая для обоих сайтов: вход с другой ролью здесь не считается.
+        if (!fits(portal, s.role)) {
+          setSession(null);
+          setStatus('anonymous');
+          setNotice(portal === 'supplier' ? 'Войдите с ID поставщика.' : 'Сейчас открыт вход поставщика. Войдите с ID сотрудника.');
+          return;
+        }
         setSession(s);
         setStatus('signed-in');
       })
@@ -47,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [attempt]);
+  }, [attempt, portal]);
 
   // Любой запрос получил 401 - сессия закончилась: возвращаемся на экран входа.
   useEffect(() => {
@@ -64,12 +78,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (id: string) => {
-    const s = await api.post<Session>('/auth/login', { id });
+    const s = await api.post<Session>('/auth/login', { id, portal });
     clearQueryCache();
     setNotice(null);
     setSession(s);
     setStatus('signed-in');
-  }, []);
+  }, [portal]);
 
   const logout = useCallback(async () => {
     try {

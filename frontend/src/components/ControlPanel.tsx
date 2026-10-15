@@ -163,7 +163,7 @@ function RisksTab({ selected, toggle }: TabProps) {
                       </button>
                     )}
                     {a.type === 'Expired' && a.batchId && (
-                      <button className="btn btn--sm btn--red" disabled={busy} onClick={() => run(() => api.post(`/batches/${a.batchId}/write-off`, { reason: 'Списание просрочки' }), 'Партия списана')}>
+                      <button className="btn btn--sm btn--red" disabled={busy} onClick={() => run(() => api.post(`/batches/${a.batchId}/write-off`, { reason: 'Списание просрочки' }), 'Партия списана в корзину')}>
                         Списать партию
                       </button>
                     )}
@@ -252,7 +252,7 @@ function ExpiryTab({ selected, toggle }: TabProps) {
                       Продукт
                     </button>
                     {b.expiry === 'expired' ? (
-                      <button className="btn btn--sm btn--red" disabled={busy} onClick={() => run(() => api.post(`/batches/${b.id}/write-off`, { reason: 'Списание просрочки' }), 'Партия списана')}>
+                      <button className="btn btn--sm btn--red" disabled={busy} onClick={() => run(() => api.post(`/batches/${b.id}/write-off`, { reason: 'Списание просрочки' }), 'Партия списана в корзину')}>
                         Списать
                       </button>
                     ) : (

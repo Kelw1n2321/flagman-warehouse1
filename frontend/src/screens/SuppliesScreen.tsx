@@ -9,12 +9,13 @@ import { EmptyState, ErrorState, Loadable, LoadingBar, Modal, Tag } from '../com
 import { dateShort, EXPIRY_LABEL, hoursLeft, humanDate, qty, relative, toLocalInput, unitLabel } from '../lib/format';
 import { useAction, useLive, useNow, useQuery, useTz, useUi, type SupplyDraftLine } from '../state/store';
 import { matches } from './StockScreen';
+import { SupplierRequestList } from './SupplierRequests';
 
 const STATUS_LABEL = { draft: 'Ожидается', received: 'Принята', cancelled: 'Отменена' } as const;
 
 export function SuppliesScreen() {
   const { route, navigate } = useUi();
-  const mode = route.param === 'new' ? 'new' : route.param === 'recommendations' ? 'recommendations' : 'list';
+  const mode = route.param === 'new' ? 'new' : route.param === 'recommendations' ? 'recommendations' : route.param === 'requests' ? 'requests' : 'list';
   const detailId = mode === 'list' ? route.param : null;
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -32,11 +33,15 @@ export function SuppliesScreen() {
             <button className={`side-btn side-btn--nav ${mode === 'list' ? 'is-active' : ''}`} onClick={() => navigate('supplies')}>
               <Icon name="list" /> <span style={{ flex: 1 }}>Список поставок</span>
             </button>
+            <button className={`side-btn side-btn--nav ${mode === 'requests' ? 'is-active' : ''}`} onClick={() => navigate('supplies', 'requests')}>
+              <Icon name="inbox" /> <span style={{ flex: 1 }}>Заявки поставщиков</span>
+              {!!summary?.pendingSupplierRequests && <span className="count">{summary.pendingSupplierRequests}</span>}
+            </button>
             <button className={`side-btn side-btn--nav ${mode === 'new' ? 'is-active' : ''}`} onClick={() => navigate('supplies', 'new')}>
               <Icon name="plus" /> <span style={{ flex: 1 }}>Новая поставка</span>
             </button>
             <button className={`side-btn side-btn--nav ${mode === 'recommendations' ? 'is-active' : ''}`} onClick={() => navigate('supplies', 'recommendations')}>
-              <Icon name="inbox" /> <span style={{ flex: 1 }}>Что заказать</span>
+              <Icon name="chart" /> <span style={{ flex: 1 }}>Что заказать</span>
             </button>
             {mode === 'list' && (
               <>
@@ -63,6 +68,7 @@ export function SuppliesScreen() {
       {mode === 'list' && <SupplyList search={search} status={status} />}
       {mode === 'new' && <ProductPicker search={search} />}
       {mode === 'recommendations' && <Recommendations />}
+      {mode === 'requests' && <SupplierRequestList search={search} />}
       {detailId && <SupplyDetail id={detailId} onClose={() => navigate('supplies')} />}
     </Workspace>
   );

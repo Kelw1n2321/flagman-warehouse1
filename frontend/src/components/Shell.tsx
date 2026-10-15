@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { dayOfMonth, timeOnly, weekday } from '../lib/format';
 import { useTheme } from '../lib/theme';
+import { ROLE_LABEL } from '../lib/roles';
 import { useAuth } from '../state/auth';
 import { useClock, useLive, useTz, useUi, type Screen } from '../state/store';
 import { Icon, type IconName } from './Icon';
@@ -17,6 +18,7 @@ export const SCREEN_TITLES: Record<Screen, string> = {
   journal: 'Журнал движения',
   alerts: 'Предупреждения',
   dishes: 'Блюда и рецептуры',
+  trash: 'Корзина',
   settings: 'Настройки',
 };
 
@@ -31,6 +33,7 @@ const SCREEN_SUBTITLES: Record<Screen, string> = {
   journal: 'Каждое изменение остатка партии — приёмка, расход, списание, корректировка.',
   alerts: 'Текущие предупреждения и история: условия закрываются автоматически.',
   dishes: 'Состав блюд на порцию. Изменение рецептуры сразу пересчитывает стоп-лист.',
+  trash: 'Списанное за всё время: можно вернуть на склад или удалить навсегда.',
   settings: 'Пороги сроков, часовой пояс, автосписание и генератор событий.',
 };
 
@@ -53,6 +56,7 @@ const NAV: NavItem[] = [
   { screen: 'alerts', icon: 'bell' },
   { screen: 'journal', icon: 'list' },
   { screen: 'stats', icon: 'chart' },
+  { screen: 'trash', icon: 'trash' },
 ];
 
 function useBadges(): Partial<Record<Screen, { value: number; tone: 'crit' | 'warn' | 'info' }>> {
@@ -63,11 +67,12 @@ function useBadges(): Partial<Record<Screen, { value: number; tone: 'crit' | 'wa
     hot: { value: s.hotOffers, tone: 'warn' },
     expiry: { value: s.criticalBatches + s.expiredBatches, tone: 'crit' },
     alerts: { value: s.activeAlerts, tone: 'info' },
+    supplies: { value: s.pendingSupplierRequests, tone: 'warn' },
   };
 }
 
 export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed: boolean; onCollapse: () => void; open: boolean; onClose: () => void }) {
-  const { route, navigate } = useUi();
+  const { route, navigate, can, role } = useUi();
   const { summary, connected } = useLive();
   const { session, logout } = useAuth();
   const badges = useBadges();
@@ -104,9 +109,9 @@ export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed
           <Icon name="chevrons" />
         </button>
       </div>
-      <nav className="appnav__scroll">{NAV.map(item)}</nav>
+      <nav className="appnav__scroll">{NAV.filter((n) => can(n.screen)).map(item)}</nav>
       <div className="appnav__bottom">
-        {item({ screen: 'settings', icon: 'gear' })}
+        {can('settings') && item({ screen: 'settings', icon: 'gear' })}
         <div className="appnav__user" title={`${name} · ID ${session?.idHint ?? ''} · ${connected ? 'Склад онлайн, данные обновляются в реальном времени' : 'Нет связи с сервером'} · ${storage}`}>
           <span className="appnav__avatar" aria-hidden>
             {initials}
@@ -114,7 +119,7 @@ export function AppSidebar({ collapsed, onCollapse, open, onClose }: { collapsed
           </span>
           <span className="appnav__who">
             <b>{name}</b>
-            <span>{connected ? `ID ${session?.idHint ?? ''} · Рабочая смена` : 'Нет связи'}</span>
+            <span>{connected ? `${ROLE_LABEL[role]} · ID ${session?.idHint ?? ''}` : 'Нет связи'}</span>
           </span>
           <button className="appnav__logout" onClick={() => void logout()} aria-label="Выйти" title="Выйти">
             <Icon name="logout" />
@@ -138,12 +143,13 @@ const PRIMARY_ACTION: Partial<Record<Screen, { label: string; icon: IconName; to
 
 /** Заголовок экрана и общие кнопки: время ресторана, тема, предупреждения, основное действие. */
 export function PageHeader({ onMenu }: { onMenu: () => void }) {
-  const { route, navigate } = useUi();
+  const { route, navigate, can } = useUi();
   const { summary } = useLive();
   const tz = useTz();
   const now = useClock();
   const [theme, cycleTheme] = useTheme();
-  const action = PRIMARY_ACTION[route.screen];
+  const candidate = PRIMARY_ACTION[route.screen];
+  const action = candidate && can(candidate.to[0]) ? candidate : undefined;
   const alerts = summary?.activeAlerts ?? 0;
   const themeLabel = theme === 'system' ? 'Тема: как в системе' : theme === 'light' ? 'Тема: светлая' : 'Тема: тёмная';
 
@@ -166,10 +172,12 @@ export function PageHeader({ onMenu }: { onMenu: () => void }) {
         <button className="iconbtn" onClick={cycleTheme} aria-label={`${themeLabel}. Нажмите, чтобы переключить`} title={`${themeLabel} — нажмите, чтобы переключить`}>
           <Icon name={theme === 'system' ? 'monitor' : theme === 'light' ? 'sun' : 'moon'} />
         </button>
-        <button className="iconbtn" onClick={() => navigate('alerts')} aria-label={`Предупреждения: ${alerts} активных`} title="Активные предупреждения">
-          <Icon name="bell" />
-          {alerts > 0 && <span className="iconbtn__count">{alerts}</span>}
-        </button>
+        {can('alerts') && (
+          <button className="iconbtn" onClick={() => navigate('alerts')} aria-label={`Предупреждения: ${alerts} активных`} title="Активные предупреждения">
+            <Icon name="bell" />
+            {alerts > 0 && <span className="iconbtn__count">{alerts}</span>}
+          </button>
+        )}
         {action && (
           <button className="btn btn--blue" onClick={() => navigate(action.to[0], action.to[1] ?? null)} title={action.label}>
             <Icon name={action.icon} /> <span className="pagehead__label">{action.label}</span>
@@ -189,14 +197,17 @@ const MOBILE_NAV: { screen: Screen; short: string; icon: IconName }[] = [
   { screen: 'stop-list', short: 'Стоп', icon: 'stop' },
   { screen: 'hot', short: 'Горячее', icon: 'flame' },
   { screen: 'stats', short: 'Отчёты', icon: 'chart' },
+  { screen: 'dishes', short: 'Блюда', icon: 'chef' },
 ];
 
 export function BottomNav() {
-  const { route, navigate } = useUi();
+  const { route, navigate, can, role } = useUi();
   const badges = useBadges();
+  // Менеджеру - шесть основных разделов, официанту - всё, что ему доступно.
+  const items = MOBILE_NAV.filter((n) => can(n.screen) && (role !== 'manager' || n.screen !== 'dishes'));
   return (
     <nav className="bottombar" aria-label="Основные разделы">
-      {MOBILE_NAV.map((n) => {
+      {items.map((n) => {
         const b = badges[n.screen];
         return (
           <button key={n.screen} className={`navbtn ${route.screen === n.screen ? 'is-active' : ''}`} onClick={() => navigate(n.screen)} aria-current={route.screen === n.screen ? 'page' : undefined}>

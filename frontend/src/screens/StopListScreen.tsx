@@ -9,7 +9,8 @@ import { useLive, useNow, useQuery, useTz, useUi } from '../state/store';
 
 export function StopListScreen() {
   const q = useQuery<StopList>('/stop-list');
-  const { navigate, openProduct } = useUi();
+  const { navigate, openProduct, role } = useUi();
+  const manager = role === 'manager';
   const { summary } = useLive();
   const tz = useTz();
   const now = useNow();
@@ -31,15 +32,17 @@ export function StopListScreen() {
           <p className="muted" style={{ fontSize: 12.5, margin: '6px 2px' }}>
             Пересчитывается автоматически после поставок, заказов, списаний, корректировок, изменения рецептур и выбытия просрочки.
           </p>
-          <button className="side-btn side-btn--nav" onClick={() => navigate('supplies', 'recommendations')}>
-            <Icon name="truck" /> <span style={{ flex: 1 }}>Что заказать</span>
-          </button>
+          {manager && (
+            <button className="side-btn side-btn--nav" onClick={() => navigate('supplies', 'recommendations')}>
+              <Icon name="truck" /> <span style={{ flex: 1 }}>Что заказать</span>
+            </button>
+          )}
           <button className="side-btn side-btn--nav" onClick={() => navigate('dishes')}>
-            <Icon name="chef" /> <span style={{ flex: 1 }}>Рецептуры</span>
+            <Icon name="chef" /> <span style={{ flex: 1 }}>{manager ? 'Рецептуры' : 'Меню'}</span>
           </button>
         </div>
       }
-      right={<ControlPanel />}
+      right={manager ? <ControlPanel /> : undefined}
     >
       <LoadingBar active={q.loading} />
       <div className="tray">
@@ -74,9 +77,11 @@ export function StopListScreen() {
                           ['Есть / нужно', 'на 1 порцию'],
                         ]}
                       />
-                      <button className="dcard__action" onClick={() => navigate('supplies', 'recommendations')}>
-                        <Icon name="truck" /> Что заказать
-                      </button>
+                      {manager && (
+                        <button className="dcard__action" onClick={() => navigate('supplies', 'recommendations')}>
+                          <Icon name="truck" /> Что заказать
+                        </button>
+                      )}
                     </article>
                   ))}
                 </div>
