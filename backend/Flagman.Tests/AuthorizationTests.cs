@@ -55,21 +55,24 @@ public sealed class AuthorizationTests : IClassFixture<AuthorizationTests.App>
         var waiter = await LoginAsync("w1");
         foreach (var path in new[] { "/api/v1/dishes", "/api/v1/hot-offers", "/api/v1/stop-list", "/api/v1/orders", "/api/v1/summary" })
             Assert.Equal(HttpStatusCode.OK, (await waiter.GetAsync(path)).StatusCode);
-        foreach (var path in new[] { "/api/v1/stock", "/api/v1/trash", "/api/v1/supplies", "/api/v1/settings", "/api/v1/supplier-requests", "/api/v1/supplier/products" })
+        foreach (var path in new[] { "/api/v1/stock", "/api/v1/trash", "/api/v1/supplies", "/api/v1/settings", "/api/v1/supplier-requests" })
             Assert.Equal(HttpStatusCode.Forbidden, (await waiter.GetAsync(path)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await waiter.GetAsync("/api/v1/supplier/products")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await waiter.PutAsJsonAsync("/api/v1/hot-offers/overrides/1", new { mode = "hide" })).StatusCode);
 
+        // У поставщика своя cookie: для основного сайта он просто не вошёл.
         var supplier = await LoginAsync("s1", "supplier");
         Assert.Equal(HttpStatusCode.OK, (await supplier.GetAsync("/api/v1/supplier/products")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await supplier.GetAsync("/api/v1/supplier/requests")).StatusCode);
-        foreach (var path in new[] { "/api/v1/summary", "/api/v1/orders", "/api/v1/dishes", "/api/v1/stock" })
-            Assert.Equal(HttpStatusCode.Forbidden, (await supplier.GetAsync(path)).StatusCode);
+        foreach (var path in new[] { "/api/v1/orders", "/api/v1/dishes", "/api/v1/stock" })
+            Assert.Equal(HttpStatusCode.Unauthorized, (await supplier.GetAsync(path)).StatusCode);
+        Assert.DoesNotContain("productCount", await supplier.GetStringAsync("/api/v1/summary"));
 
         var manager = await LoginAsync("m1");
         foreach (var path in new[] { "/api/v1/stock", "/api/v1/trash", "/api/v1/supplier-requests", "/api/v1/hot-offers" })
             Assert.Equal(HttpStatusCode.OK, (await manager.GetAsync(path)).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await manager.GetAsync("/api/v1/supplier/requests")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await manager.GetAsync("/api/v1/supplier/requests")).StatusCode);
 
         var anonymous = _app.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/dishes")).StatusCode);
@@ -84,5 +87,24 @@ public sealed class AuthorizationTests : IClassFixture<AuthorizationTests.App>
 
         var me = await (await LoginAsync("w1")).GetFromJsonAsync<Dictionary<string, object>>("/api/v1/auth/me");
         Assert.Equal("waiter", me!["role"].ToString());
+    }
+
+    [Fact]
+    public async Task SameBrowser_SupplierAndManager_DoNotKickEachOtherOut()
+    {
+        var browser = _app.CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await browser.PostAsJsonAsync("/api/v1/auth/login", new { id = "s1", portal = "supplier" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await browser.PostAsJsonAsync("/api/v1/auth/login", new { id = "m1" })).StatusCode);
+
+        Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/api/v1/supplier/requests")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/api/v1/stock")).StatusCode);
+        var supplierMe = await browser.GetFromJsonAsync<Dictionary<string, object>>("/api/v1/auth/me?portal=supplier");
+        var staffMe = await browser.GetFromJsonAsync<Dictionary<string, object>>("/api/v1/auth/me");
+        Assert.Equal(("supplier", "manager"), (supplierMe!["role"].ToString(), staffMe!["role"].ToString()));
+
+        // Выход поставщика не выбивает менеджера.
+        await browser.PostAsync("/api/v1/auth/logout?portal=supplier", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await browser.GetAsync("/api/v1/supplier/requests")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/api/v1/stock")).StatusCode);
     }
 }

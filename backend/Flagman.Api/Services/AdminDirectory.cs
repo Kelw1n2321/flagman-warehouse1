@@ -22,6 +22,12 @@ public static class Roles
     };
 }
 
+public static class AuthSchemes
+{
+    /// <summary>Отдельная cookie кабинета поставщика (сотрудники - схема по умолчанию).</summary>
+    public const string Supplier = "SupplierCookie";
+}
+
 public static class Policies
 {
     /// <summary>Менеджер и официант.</summary>

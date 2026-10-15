@@ -33,24 +33,31 @@ public static class AuthEndpoints
             if (!supplierPortal && admin.Role == Roles.Supplier)
                 return Results.Problem(statusCode: 403, title: "Это ID поставщика. Войдите в кабинете поставщика: /supplier");
 
+            var scheme = SchemeFor(r.Portal);
             var identity = new ClaimsIdentity(
                 [new Claim(AccountKeyClaim, admin.Key), new Claim(IdHintClaim, Hint(admin.Id)), new Claim(ClaimTypes.Name, admin.Name), new Claim(ClaimTypes.Role, admin.Role)],
-                CookieAuthenticationDefaults.AuthenticationScheme);
-            await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+                scheme);
+            await http.SignInAsync(scheme, new ClaimsPrincipal(identity));
             return Results.Ok(ToDto(admin));
         }).RequireRateLimiting("login");
 
-        auth.MapGet("/me", (ClaimsPrincipal user, AdminDirectory admins) =>
-            admins.FindByKey(user.FindFirstValue(AccountKeyClaim)) is { } admin
-                ? Results.Ok(new SessionDto(admin.Name, user.FindFirstValue(IdHintClaim) ?? "", admin.Role))
-                : Results.Problem(statusCode: 401, title: "Требуется вход."));
-
-        auth.MapPost("/logout", async (HttpContext http) =>
+        auth.MapGet("/me", async (string? portal, HttpContext http, AdminDirectory admins) =>
         {
-            await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            var user = (await http.AuthenticateAsync(SchemeFor(portal))).Principal;
+            return admins.FindByKey(user?.FindFirstValue(AccountKeyClaim)) is { } admin
+                ? Results.Ok(new SessionDto(admin.Name, user!.FindFirstValue(IdHintClaim) ?? "", admin.Role))
+                : Results.Problem(statusCode: 401, title: "Требуется вход.");
+        });
+
+        auth.MapPost("/logout", async (string? portal, HttpContext http) =>
+        {
+            await http.SignOutAsync(SchemeFor(portal));
             return Results.NoContent();
         });
     }
+
+    private static string SchemeFor(string? portal) =>
+        string.Equals(portal, "supplier", StringComparison.OrdinalIgnoreCase) ? AuthSchemes.Supplier : CookieAuthenticationDefaults.AuthenticationScheme;
 
     private static string Hint(string id) => id.Length <= 4 ? new string('•', id.Length) : "••" + id[^2..];
 

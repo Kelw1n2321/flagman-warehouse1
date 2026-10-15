@@ -40,7 +40,7 @@ export function AuthProvider({ portal = 'staff', children }: { portal?: Portal; 
     let alive = true;
     setStatus('checking');
     api
-      .get<Session>('/auth/me')
+      .get<Session>(`/auth/me?portal=${portal}`)
       .then((s) => {
         if (!alive) return;
         // Cookie общая для обоих сайтов: вход с другой ролью здесь не считается.
@@ -87,14 +87,14 @@ export function AuthProvider({ portal = 'staff', children }: { portal?: Portal; 
 
   const logout = useCallback(async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post(`/auth/logout?portal=${portal}`);
     } finally {
       clearQueryCache();
       setSession(null);
       setNotice(null);
       setStatus('anonymous');
     }
-  }, []);
+  }, [portal]);
 
   const retry = useCallback(() => setAttempt((a) => a + 1), []);
 

@@ -58,11 +58,12 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
 });
 
-// Вход по ID админа, cookie на 12 часов.
+// Вход по ID, cookie на 12 часов. У сотрудников и у кабинета поставщика разные cookie,
+// чтобы вход на одном сайте не выбивал из другого в том же браузере.
 builder.Services.AddSingleton<AdminDirectory>();
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
+void ConfigureCookie(CookieAuthenticationOptions o, string cookieName, string scheme)
 {
-    o.Cookie.Name = "flagman.auth";
+    o.Cookie.Name = cookieName;
     o.Cookie.HttpOnly = true;
     o.Cookie.SameSite = SameSiteMode.Strict;
     o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
@@ -79,14 +80,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         if (account is null || account.Role != ctx.Principal?.FindFirst(ClaimTypes.Role)?.Value)
         {
             ctx.RejectPrincipal();
-            await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await ctx.HttpContext.SignOutAsync(scheme);
         }
     };
-});
+}
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(o => ConfigureCookie(o, "flagman.auth", CookieAuthenticationDefaults.AuthenticationScheme))
+    .AddCookie(AuthSchemes.Supplier, o => ConfigureCookie(o, "flagman.supplier", AuthSchemes.Supplier));
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Policies.Staff, p => p.RequireRole(Roles.Manager, Roles.Waiter))
     .AddPolicy(Policies.Manager, p => p.RequireRole(Roles.Manager))
-    .AddPolicy(Policies.Supplier, p => p.RequireRole(Roles.Supplier));
+    .AddPolicy(Policies.Supplier, p => p.AddAuthenticationSchemes(AuthSchemes.Supplier).RequireRole(Roles.Supplier));
 // На Render приложение стоит за прокси: берём https из X-Forwarded-Proto и настоящий IP клиента
 // (последний адрес в X-Forwarded-For дописывает сам прокси, подделать его нельзя). Без IP лимит попыток входа
 // был бы общим на всех пользователей.
