@@ -84,6 +84,8 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
 
   const accept = async () => {
     if (!r) return;
+    // Пустое поле - не ноль: принятую заявку уже не изменить, поэтому ноль нужно ввести явно.
+    if (r.lines.some((l) => value(l.id, l.requestedQuantity).trim() === '')) return setError('Укажите количество для каждой позиции (0, если товар не приехал).');
     const lines = r.lines.map((l) => ({ lineId: l.id, quantity: Number(value(l.id, l.requestedQuantity).replace(',', '.')) }));
     if (lines.some((l) => !Number.isFinite(l.quantity) || l.quantity < 0)) return setError('Количество должно быть числом от нуля.');
     if (lines.every((l) => l.quantity === 0)) return setError('Ничего не принято. Если товар не приехал, отклоните заявку.');

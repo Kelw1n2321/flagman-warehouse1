@@ -26,5 +26,5 @@ public static class SupplierEndpoints
 
     // Учётка уже проверена при входе и на каждом запросе (OnValidatePrincipal), поэтому здесь она всегда есть.
     private static AdminAccount Me(ClaimsPrincipal u, AdminDirectory admins) =>
-        admins.Find(u.FindFirstValue(AuthEndpoints.AdminIdClaim)) ?? throw new DomainException(401, "Требуется вход.");
+        admins.FindByKey(u.FindFirstValue(AuthEndpoints.AccountKeyClaim)) ?? throw new DomainException(401, "Требуется вход.");
 }

@@ -361,7 +361,8 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
     private async Task<HotOfferView> HotViewAsync(WarehouseSnapshot s, CancellationToken ct) =>
         HotOfferCalculator.ApplyOverrides(HotOfferCalculator.Calculate(s), s, await warehouse.GetHotOverridesAsync(ct));
 
-    public async Task<HotOffersDto> GetHotOffersAsync(CancellationToken ct)
+    /// <summary>includeHidden - только для менеджера: официанту не нужен список скрытого и кто его скрыл.</summary>
+    public async Task<HotOffersDto> GetHotOffersAsync(CancellationToken ct, bool includeHidden = true)
     {
         var s = await warehouse.LoadSnapshotAsync(Now, ct);
         var result = await HotViewAsync(s, ct);
@@ -386,7 +387,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             result.Blocked.Select(b => new BlockedOfferDto(b.DishId, dishes[b.DishId].Name, dishes[b.DishId].Icon,
                 b.AtRiskProductIds.Select(id => s.Products[id].Name).ToList(),
                 b.MissingProductIds.Select(id => s.Products[id].Name).ToList())).ToList(),
-            result.Hidden.Select(h => new HiddenOfferDto(h.Override.DishId, dishes[h.Override.DishId].Name, dishes[h.Override.DishId].Icon,
+            result.Hidden.Where(_ => includeHidden).Select(h => new HiddenOfferDto(h.Override.DishId, dishes[h.Override.DishId].Name, dishes[h.Override.DishId].Icon,
                 h.Override.Note, h.Override.CreatedAt, h.Override.CreatedBy, h.Override.Until, h.Score is { } sc ? Math.Round(sc, 1) : null)).ToList(),
             "вклад ингредиента = 100 × срочность × (0,35 + 0,65 × покрытие) × (0,5 + 0,5 × объём) × эксклюзивность; приоритет блюда = сумма вкладов");
     }

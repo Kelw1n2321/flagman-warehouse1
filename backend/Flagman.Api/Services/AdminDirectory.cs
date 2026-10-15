@@ -144,6 +144,17 @@ public sealed class AdminDirectory
         return list;
     }
 
+    /// <summary>
+    /// Учётка по ключу из cookie. Сам ID в cookie не хранится, а поиск по ключу не требует медленного PBKDF2,
+    /// поэтому старая cookie удалённого сотрудника не нагружает сервер. Id у найденной так учётки пустой.
+    /// </summary>
+    public AdminAccount? FindByKey(string? key)
+    {
+        if (string.IsNullOrEmpty(key)) return null;
+        if (_admins.FirstOrDefault(a => a.Key == key) is { } plain) return plain;
+        return _hashed.FirstOrDefault(h => HashedKey(h.Salt) == key) is { } h ? new AdminAccount("", h.Name, h.Role, key) : null;
+    }
+
     /// <summary>Ищет администратора по введённому ID; сравнение за постоянное время, без раннего выхода.</summary>
     public AdminAccount? Find(string? id)
     {

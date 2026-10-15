@@ -96,4 +96,15 @@ public sealed class SupplierRequestTests : IAsyncLifetime
         Assert.Null(await _host.Query(q => q.GetSupplierRequestAsync(other.Id, "me", default)));
         Assert.Equal(2, (await _host.Query(q => q.GetSupplierRequestsAsync(null, null, default))).Count);
     }
+
+    [Fact]
+    public async Task Accept_DuplicateLine_IsValidationError()
+    {
+        var chk = await _host.AddProductAsync("CHK");
+        var req = await Send("k", (chk, 20));
+        var line = req.Lines.Single().Id;
+        var ex = await Assert.ThrowsAsync<DomainException>(() => _host.With((w, _) => w.AcceptSupplierRequestAsync(req.Id,
+            new AcceptSupplierRequestCommand([new AcceptLineInput(line, 5), new AcceptLineInput(line, 6)]), "М", default)));
+        Assert.Equal(400, ex.Status);
+    }
 }

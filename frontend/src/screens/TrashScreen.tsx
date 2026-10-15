@@ -5,7 +5,7 @@ import { Icon } from '../components/Icon';
 import { SearchBox, Workspace } from '../components/Shell';
 import { EmptyState, Loadable, LoadingBar, Tag } from '../components/ui';
 import { dateShort, humanDate, qty } from '../lib/format';
-import { useAction, useNow, useQuery, useTz, useUi } from '../state/store';
+import { useAction, useLive, useNow, useQuery, useTz, useUi } from '../state/store';
 import { matches } from './StockScreen';
 
 const KINDS = [
@@ -23,6 +23,7 @@ export function TrashScreen() {
   const { run, busy } = useAction();
   const tz = useTz();
   const now = useNow();
+  const autoWriteOff = useLive().summary?.settings.autoWriteOffExpired ?? false;
   const all = q.data ?? [];
   const counts = Object.fromEntries(KINDS.map(([k]) => [k, all.filter((t) => !k || t.kind === k).length]));
   const list = all
@@ -109,7 +110,12 @@ export function TrashScreen() {
                           </div>
                         </td>
                         <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                          <button className="btn btn--sm" disabled={busy} onClick={() => restore(t)}>
+                          <button
+                            className="btn btn--sm"
+                            disabled={busy || (t.batchExpired && autoWriteOff)}
+                            title={t.batchExpired && autoWriteOff ? 'Партия просрочена, а автосписание включено: она сразу снова уйдёт в корзину' : undefined}
+                            onClick={() => restore(t)}
+                          >
                             <Icon name="refresh" /> Вернуть
                           </button>{' '}
                           <button className="btn btn--sm btn--red" disabled={busy} onClick={() => purge(t)} aria-label="Удалить навсегда" title="Удалить навсегда">

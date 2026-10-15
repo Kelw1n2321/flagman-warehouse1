@@ -76,6 +76,8 @@ public sealed partial class WarehouseService
                 .FirstOrDefaultAsync(r => r.Id == id, ct) ?? throw DomainException.NotFound("Заявка");
             if (request.Status != SupplierRequestStatus.Sent) throw DomainException.Conflict("Заявка уже обработана.");
 
+            if ((cmd.Lines ?? []).GroupBy(l => l.LineId).Any(g => g.Count() > 1))
+                throw DomainException.Invalid("lines", "Позиция указана дважды.");
             var given = (cmd.Lines ?? []).ToDictionary(l => l.LineId, l => l.Quantity);
             if (given.Keys.Any(k => request.Lines.All(l => l.Id != k)))
                 throw DomainException.Invalid("lines", "В заявке нет такой позиции.");

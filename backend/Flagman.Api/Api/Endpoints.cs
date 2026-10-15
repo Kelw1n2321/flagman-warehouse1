@@ -155,7 +155,9 @@ public static class Endpoints
         }).RequireRateLimiting("writes");
 
         // Блюда
-        staff.MapGet("/dishes", (bool? includeInactive, QueryService q, CancellationToken ct) => q.GetDishesAsync(includeInactive ?? false, ct));
+        // Выключенные из меню блюда видит только менеджер.
+        staff.MapGet("/dishes", (bool? includeInactive, ClaimsPrincipal u, QueryService q, CancellationToken ct) =>
+            q.GetDishesAsync(includeInactive == true && u.IsInRole(Roles.Manager), ct));
         mgr.MapPut("/dishes/{id:int}", async (int id, UpdateDishCommand cmd, WarehouseService w, CancellationToken ct) =>
         {
             var d = await w.UpdateDishAsync(id, cmd, ct);
@@ -189,7 +191,7 @@ public static class Endpoints
 
         // Стоп-лист, предложения, статистика, предупреждения
         staff.MapGet("/stop-list", (QueryService q, CancellationToken ct) => q.GetStopListAsync(ct));
-        staff.MapGet("/hot-offers", (QueryService q, CancellationToken ct) => q.GetHotOffersAsync(ct));
+        staff.MapGet("/hot-offers", (ClaimsPrincipal u, QueryService q, CancellationToken ct) => q.GetHotOffersAsync(ct, u.IsInRole(Roles.Manager)));
         mgr.MapPut("/hot-offers/overrides/{dishId:int}", async (int dishId, HotOverrideCommand cmd, ClaimsPrincipal u, WarehouseService w, CancellationToken ct) =>
         {
             var o = await w.SetHotOverrideAsync(dishId, cmd, Actor(u), ct);
@@ -208,7 +210,7 @@ public static class Endpoints
         // Демо-режим
         mgr.MapPost("/demo/reset", async (IServiceProvider sp, WriteGate gate, EventBus bus, WarehouseService w, IConfiguration config, CancellationToken ct) =>
         {
-            if (!config.GetValue("Demo:AllowReset", true)) return Results.Problem(statusCode: 403, title: "Сброс отключён в этом окружении");
+            if (!config.GetValue("Demo:AllowReset", false)) return Results.Problem(statusCode: 403, title: "Сброс отключён в этом окружении");
             using (await gate.AcquireAsync(ct))
             {
                 var db = sp.GetRequiredService<FlagmanDbContext>();

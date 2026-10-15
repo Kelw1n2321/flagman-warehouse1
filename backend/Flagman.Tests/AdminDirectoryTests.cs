@@ -99,4 +99,16 @@ public class AdminDirectoryTests
         var plain = new AdminDirectory("abc:Х:supplier").Find("abc")!;
         Assert.DoesNotContain("abc", plain.Key[2..]);
     }
+
+    [Fact]
+    public void FindByKey_returns_account_without_needing_the_id()
+    {
+        var dir = new AdminDirectory("1001:Иван", AdminDirectory.HashId("Waiter-1", 1000) + ":Анна:waiter");
+        var waiter = dir.Find("Waiter-1")!;
+        var byKey = dir.FindByKey(waiter.Key)!;
+        Assert.Equal(("Анна", Roles.Waiter, ""), (byKey.Name, byKey.Role, byKey.Id));
+        Assert.Equal("Иван", dir.FindByKey(dir.Find("1001")!.Key)!.Name);
+        Assert.Null(dir.FindByKey("h:unknown"));
+        Assert.Null(dir.FindByKey(null));
+    }
 }

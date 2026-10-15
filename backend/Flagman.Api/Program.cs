@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Flagman.Api.Api;
 using Flagman.Api.Data;
 using Flagman.Api.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -70,23 +71,29 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     // API отвечает кодами, а не перенаправлением на страницу входа.
     o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
     o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
-    // ID убрали из настроек или поменяли роль - старая сессия перестаёт действовать сразу.
-    o.Events.OnValidatePrincipal = ctx =>
+    // ID убрали из настроек или поменяли роль - старая сессия перестаёт действовать сразу, а cookie удаляется.
+    o.Events.OnValidatePrincipal = async ctx =>
     {
         var admins = ctx.HttpContext.RequestServices.GetRequiredService<AdminDirectory>();
-        var account = admins.Find(ctx.Principal?.FindFirst(AuthEndpoints.AdminIdClaim)?.Value);
-        if (account is null || account.Role != ctx.Principal?.FindFirst(ClaimTypes.Role)?.Value) ctx.RejectPrincipal();
-        return Task.CompletedTask;
+        var account = admins.FindByKey(ctx.Principal?.FindFirst(AuthEndpoints.AccountKeyClaim)?.Value);
+        if (account is null || account.Role != ctx.Principal?.FindFirst(ClaimTypes.Role)?.Value)
+        {
+            ctx.RejectPrincipal();
+            await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        }
     };
 });
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Policies.Staff, p => p.RequireRole(Roles.Manager, Roles.Waiter))
     .AddPolicy(Policies.Manager, p => p.RequireRole(Roles.Manager))
     .AddPolicy(Policies.Supplier, p => p.RequireRole(Roles.Supplier));
-// На Render приложение стоит за прокси, берём https из X-Forwarded-Proto.
+// На Render приложение стоит за прокси: берём https из X-Forwarded-Proto и настоящий IP клиента
+// (последний адрес в X-Forwarded-For дописывает сам прокси, подделать его нельзя). Без IP лимит попыток входа
+// был бы общим на всех пользователей.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
-    o.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor;
+    o.ForwardLimit = 1;
     o.KnownIPNetworks.Clear();
     o.KnownProxies.Clear();
 });
