@@ -43,6 +43,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         MovementType.ExpiredWriteOff => "expiredWriteOff",
         MovementType.SpoilageWriteOff => "spoilageWriteOff",
         MovementType.AdjustmentPlus => "adjustmentPlus",
+        MovementType.Restore => "restore",
         _ => "adjustmentMinus",
     };
 
@@ -248,7 +249,8 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         var s = await warehouse.LoadSnapshotAsync(Now, ct);
         var all = await db.Dishes.AsNoTracking().Include(d => d.Ingredients).OrderBy(d => d.Name).ToListAsync(ct);
         var openStops = await db.StopListEntries.AsNoTracking().Where(e => e.EndedAt == null).ToDictionaryAsync(e => e.DishId, e => e.StartedAt, ct);
-        var hot = HotOfferCalculator.Calculate(s).Offers.ToDictionary(o => o.DishId, o => o.Level);
+        var view = await HotViewAsync(s, ct);
+        var hot = view.Offers.ToDictionary(o => o.DishId, o => view.Pins.ContainsKey(o.DishId) ? "pinned" : o.Level);
         var atRisk = s.Stock.Where(kv => kv.Value.AtRisk > 0).Select(kv => kv.Key).ToHashSet();
         return all.Where(d => includeInactive || d.IsActive).Select(d =>
         {
@@ -355,15 +357,20 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         return new StopListDto(items, predictions, returned, s.Dishes.Count);
     }
 
+    /// <summary>Расчёт с правками менеджера. Один и тот же для экрана, сводки и меню, чтобы цифры совпадали.</summary>
+    private async Task<HotOfferView> HotViewAsync(WarehouseSnapshot s, CancellationToken ct) =>
+        HotOfferCalculator.ApplyOverrides(HotOfferCalculator.Calculate(s), s, await warehouse.GetHotOverridesAsync(ct));
+
     public async Task<HotOffersDto> GetHotOffersAsync(CancellationToken ct)
     {
         var s = await warehouse.LoadSnapshotAsync(Now, ct);
-        var result = HotOfferCalculator.Calculate(s);
+        var result = await HotViewAsync(s, ct);
         var dishes = s.Dishes.ToDictionary(d => d.Id);
         return new HotOffersDto(
             result.Offers.Select(o =>
             {
                 var d = dishes[o.DishId];
+                var pin = result.Pins.GetValueOrDefault(o.DishId);
                 return new HotOfferDto(d.Id, d.Name, d.Icon, d.Description, o.Score, o.Level, o.MaxServings, o.RecommendedServings,
                     o.LimitingProductId is { } lp ? s.Products[lp].Name : null, o.Summary,
                     o.Ingredients.Select(i =>
@@ -373,13 +380,84 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
                             ExpiryName(i.State), i.PerServing, i.ServingsToClear, i.UsableServings, i.RescuedQuantity,
                             Math.Round(i.Urgency, 2), Math.Round(i.Volume, 2), Math.Round(i.Coverage, 2), Math.Round(i.Exclusivity, 2),
                             i.OtherDishCount, i.Contribution, i.Explanation);
-                    }).ToList());
+                    }).ToList(),
+                    pin is not null, pin?.Note, pin?.Until);
             }).ToList(),
             result.Blocked.Select(b => new BlockedOfferDto(b.DishId, dishes[b.DishId].Name, dishes[b.DishId].Icon,
                 b.AtRiskProductIds.Select(id => s.Products[id].Name).ToList(),
                 b.MissingProductIds.Select(id => s.Products[id].Name).ToList())).ToList(),
+            result.Hidden.Select(h => new HiddenOfferDto(h.Override.DishId, dishes[h.Override.DishId].Name, dishes[h.Override.DishId].Icon,
+                h.Override.Note, h.Override.CreatedAt, h.Override.CreatedBy, h.Override.Until, h.Score is { } sc ? Math.Round(sc, 1) : null)).ToList(),
             "вклад ингредиента = 100 × срочность × (0,35 + 0,65 × покрытие) × (0,5 + 0,5 × объём) × эксклюзивность; приоритет блюда = сумма вкладов");
     }
+
+    // Корзина
+
+    public async Task<IReadOnlyList<TrashItemDto>> GetTrashAsync(string? kind, string? search, CancellationToken ct)
+    {
+        var items = await db.TrashItems.AsNoTracking().Where(t => t.RestoredAt == null && t.PurgedAt == null)
+            .OrderByDescending(t => t.DeletedAt).ThenByDescending(t => t.Id).ToListAsync(ct);
+        var batchIds = items.Select(t => t.BatchId).Distinct().ToList();
+        var batches = await db.Batches.AsNoTracking().Where(b => batchIds.Contains(b.Id)).ToDictionaryAsync(b => b.Id, ct);
+        var products = await db.Products.AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
+        var now = Now;
+        IEnumerable<TrashItemDto> list = items.Select(t =>
+        {
+            var b = batches[t.BatchId];
+            var p = products[t.ProductId];
+            return new TrashItemDto(t.Id, b.Id, b.Code, p.Id, p.Name, p.Unit, p.Category, t.Quantity,
+                t.Kind == WriteOffKind.Expired ? "expired" : "spoilage", t.Reason, t.DeletedAt, t.DeletedBy, b.ExpiresAt, b.ExpiresAt <= now);
+        });
+        if (kind is "expired" or "spoilage") list = list.Where(t => t.Kind == kind);
+        if (!string.IsNullOrWhiteSpace(search))
+            list = list.Where(t => t.ProductName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                                   || t.BatchCode.Contains(search, StringComparison.OrdinalIgnoreCase)
+                                   || t.Reason.Contains(search, StringComparison.OrdinalIgnoreCase));
+        return list.ToList();
+    }
+
+    // Заявки поставщиков
+
+    /// <summary>supplierKey задан - только заявки этого поставщика (для кабинета поставщика).</summary>
+    public async Task<IReadOnlyList<SupplierRequestDto>> GetSupplierRequestsAsync(string? supplierKey, string? status, CancellationToken ct)
+    {
+        var q = db.SupplierRequests.AsNoTracking().Include(r => r.Lines).AsQueryable();
+        if (supplierKey is not null) q = q.Where(r => r.SupplierKey == supplierKey);
+        var list = await q.ToListAsync(ct);
+        var dtos = await ToRequestDtosAsync(list, ct);
+        if (!string.IsNullOrWhiteSpace(status)) dtos = dtos.Where(d => d.Status == status).ToList();
+        return dtos.OrderBy(d => d.Status == "sent" ? 0 : 1).ThenByDescending(d => d.CreatedAt).ToList();
+    }
+
+    public async Task<SupplierRequestDto?> GetSupplierRequestAsync(Guid id, string? supplierKey, CancellationToken ct)
+    {
+        var r = await db.SupplierRequests.AsNoTracking().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (r is null || (supplierKey is not null && r.SupplierKey != supplierKey)) return null;
+        return (await ToRequestDtosAsync([r], ct))[0];
+    }
+
+    private async Task<List<SupplierRequestDto>> ToRequestDtosAsync(IReadOnlyList<SupplierRequest> list, CancellationToken ct)
+    {
+        var products = await db.Products.AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
+        var ids = list.Select(r => (Guid?)r.Id).ToList();
+        var supplies = await db.Supplies.AsNoTracking().Where(x => ids.Contains(x.SupplierRequestId))
+            .Select(x => new { x.Id, x.SupplyNumber, x.SupplierRequestId }).ToListAsync(ct);
+        return list.Select(r =>
+        {
+            var supply = supplies.FirstOrDefault(x => x.SupplierRequestId == r.Id);
+            var lines = r.Lines.OrderBy(l => l.Id).Select(l => new SupplierRequestLineDto(l.Id, l.ProductId, products[l.ProductId].Name,
+                products[l.ProductId].Unit, l.RequestedQuantity, l.AcceptedQuantity, l.ExpiresAt)).ToList();
+            var status = r.Status switch { SupplierRequestStatus.Accepted => "accepted", SupplierRequestStatus.Rejected => "rejected", _ => "sent" };
+            return new SupplierRequestDto(r.Id, r.Number, r.SupplierName, r.CreatedAt, status,
+                r.Status == SupplierRequestStatus.Accepted && r.Lines.Any(l => l.AcceptedQuantity < l.RequestedQuantity),
+                r.Comment, r.DecidedAt, r.DecidedBy, r.RejectionReason, supply?.Id, supply?.SupplyNumber, lines);
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<SupplierProductDto>> GetSupplierProductsAsync(CancellationToken ct) =>
+        (await db.Products.AsNoTracking().Where(p => !p.IsArchived).ToListAsync(ct))
+            .OrderBy(p => p.Category).ThenBy(p => p.Name)
+            .Select(p => new SupplierProductDto(p.Id, p.Name, p.Unit, p.Category, p.DefaultShelfLifeHours)).ToList();
 
     // Предупреждения
 
@@ -425,9 +503,11 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             s.StopList.Count(), s.Dishes.Count,
             alerts.Count, alerts.Count(a => a == AlertSeverity.Critical),
             today.Count(x => x == OrderStatus.Completed), today.Count(x => x == OrderStatus.Rejected),
-            HotOfferCalculator.Calculate(s).Offers.Count,
+            (await HotViewAsync(s, ct)).Offers.Count,
             s.Products.Values.Select(p => p.Category).Distinct().Order().ToList(),
-            ToSettingsDto(settings));
+            ToSettingsDto(settings),
+            await db.SupplierRequests.CountAsync(r => r.Status == SupplierRequestStatus.Sent, ct),
+            await db.TrashItems.CountAsync(t => t.RestoredAt == null && t.PurgedAt == null, ct));
     }
 
     // Прогноз и статистика
@@ -460,8 +540,12 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         bool InCategory(int productId) => string.IsNullOrWhiteSpace(category) || s.Products[productId].Category == category;
         var products = s.Products.Values.Where(p => !p.IsArchived && InCategory(p.Id)).ToList();
 
+        // Восстановленное из корзины списание - ошибка, а не потеря: убираем его вместе с возвратом.
+        var undone = (await db.TrashItems.AsNoTracking().Where(t => t.RestoreMovementId != null)
+                .Select(t => new { t.WriteOffMovementId, t.RestoreMovementId }).ToListAsync(ct))
+            .SelectMany(t => new[] { t.WriteOffMovementId, t.RestoreMovementId!.Value }).ToHashSet();
         var movements = (await db.Movements.AsNoTracking().ToListAsync(ct))
-            .Where(m => m.CreatedAt >= from && m.CreatedAt <= s.Now && InCategory(m.ProductId)).ToList();
+            .Where(m => m.CreatedAt >= from && m.CreatedAt <= s.Now && InCategory(m.ProductId) && !undone.Contains(m.Id)).ToList();
         var orders = (await db.Orders.AsNoTracking().Include(o => o.Shortages).Include(o => o.Lines).AsSplitQuery().ToListAsync(ct))
             .Where(o => o.CreatedAt >= from).ToList();
         var dishes = await db.Dishes.AsNoTracking().Include(d => d.Ingredients).ToListAsync(ct);

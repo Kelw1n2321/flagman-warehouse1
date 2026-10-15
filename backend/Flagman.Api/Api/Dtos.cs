@@ -59,9 +59,11 @@ public sealed record HotIngredientDto(int ProductId, string Name, string Unit, s
     string BatchCode, string State, decimal PerServing, int ServingsToClear, int UsableServings, decimal RescuedQuantity,
     double Urgency, double Volume, double Coverage, double Exclusivity, int OtherDishCount, double Contribution, IReadOnlyList<string> Explanation);
 public sealed record HotOfferDto(int DishId, string Name, string Icon, string Description, double Score, string Level,
-    int MaxServings, int RecommendedServings, string? LimitingProductName, string Summary, IReadOnlyList<HotIngredientDto> Ingredients);
+    int MaxServings, int RecommendedServings, string? LimitingProductName, string Summary, IReadOnlyList<HotIngredientDto> Ingredients,
+    bool Pinned, string? PinNote, DateTime? PinnedUntil);
 public sealed record BlockedOfferDto(int DishId, string Name, string Icon, IReadOnlyList<string> AtRiskProducts, IReadOnlyList<string> MissingProducts);
-public sealed record HotOffersDto(IReadOnlyList<HotOfferDto> Offers, IReadOnlyList<BlockedOfferDto> Blocked, string Formula);
+public sealed record HiddenOfferDto(int DishId, string Name, string Icon, string? Note, DateTime HiddenAt, string HiddenBy, DateTime? Until, double? Score);
+public sealed record HotOffersDto(IReadOnlyList<HotOfferDto> Offers, IReadOnlyList<BlockedOfferDto> Blocked, IReadOnlyList<HiddenOfferDto> Hidden, string Formula);
 
 public sealed record RecommendationDto(int ProductId, string Name, string Unit, string Icon, string Category, decimal Available, decimal MinStock,
     decimal DailyUsage, double? DaysOfCover, decimal ExpectedLoss, decimal RecommendedQuantity, string Urgency,
@@ -72,7 +74,7 @@ public sealed record SummaryDto(
     int ProductCount, int ProductsInStock, int ActiveBatches, int AttentionProducts,
     int ExpiringBatches, int CriticalBatches, int ExpiredBatches, int StopListCount, int DishCount,
     int ActiveAlerts, int CriticalAlerts, int OrdersToday, int RejectedToday, int HotOffers,
-    IReadOnlyList<string> Categories, SettingsDto Settings);
+    IReadOnlyList<string> Categories, SettingsDto Settings, int PendingSupplierRequests, int TrashCount);
 
 public sealed record SettingsDto(int SoonHours, int CriticalHours, bool AutoWriteOffExpired, string TimeZone,
     int ForecastWindowDays, int SupplyCoverDays, bool GeneratorEnabled, int GeneratorIntervalSeconds, string Mode);
@@ -97,3 +99,13 @@ public sealed record StatsTotalsDto(int Products, int ProductsInStock, int Activ
 public sealed record StatsDto(int Days, string? Category, StatsTotalsDto Totals, IReadOnlyList<DayPointDto> Daily,
     IReadOnlyList<ProductFlowDto> Flows, IReadOnlyList<DeficitDto> Deficits, IReadOnlyList<StopFrequencyDto> StopFrequency,
     IReadOnlyList<DepletionForecastDto> Forecasts, IReadOnlyList<StopForecastDto> StopForecast, bool ForecastHasData);
+
+public sealed record SupplierProductDto(int Id, string Name, string Unit, string Category, int? DefaultShelfLifeHours);
+public sealed record SupplierRequestLineDto(int Id, int ProductId, string ProductName, string Unit, decimal RequestedQuantity,
+    decimal? AcceptedQuantity, DateTime ExpiresAt);
+public sealed record SupplierRequestDto(Guid Id, string Number, string SupplierName, DateTime CreatedAt, string Status, bool Partial,
+    string? Comment, DateTime? DecidedAt, string? DecidedBy, string? RejectionReason, Guid? SupplyId, string? SupplyNumber,
+    IReadOnlyList<SupplierRequestLineDto> Lines);
+
+public sealed record TrashItemDto(int Id, int BatchId, string BatchCode, int ProductId, string ProductName, string Unit, string Category,
+    decimal Quantity, string Kind, string Reason, DateTime DeletedAt, string DeletedBy, DateTime BatchExpiresAt, bool BatchExpired);

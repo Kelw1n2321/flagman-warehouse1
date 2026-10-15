@@ -5,33 +5,57 @@ using Microsoft.EntityFrameworkCore;
 namespace Flagman.Api.Data;
 
 /// <summary>
-/// Добавляет новые колонки в старую базу. EnsureCreated уже созданные таблицы не меняет,
-/// поэтому новые поля добавляются тут вручную.
+/// Добавляет новые таблицы и колонки в старую базу. EnsureCreated уже созданные таблицы не меняет,
+/// поэтому новое добавляется тут вручную.
 /// </summary>
 public static class SchemaPatches
 {
-    private static readonly (string Table, string Column, int MaxLength)[] AddedColumns =
+    private static readonly (string Table, string Column, string SqliteType, string PgType)[] AddedColumns =
     [
-        ("Orders", "Title", OrderLimits.Title),
-        ("Orders", "Comment", OrderLimits.Comment),
+        ("Orders", "Title", "TEXT", $"character varying({OrderLimits.Title})"),
+        ("Orders", "Comment", "TEXT", $"character varying({OrderLimits.Comment})"),
+        ("Supplies", "SupplierRequestId", "TEXT", "uuid"),
     ];
+
+    /// <summary>Таблицы, которых могло не быть в старой базе. DDL берём из модели EF, чтобы не писать SQL руками.</summary>
+    private static readonly string[] NewTables = ["SupplierRequests", "SupplierRequestLines", "HotOfferOverrides", "TrashItems"];
 
     // Имена таблиц и колонок - константы этого класса, не пользовательский ввод: интерполяция безопасна,
     // а параметризовать имена идентификаторов в DDL нельзя.
 #pragma warning disable EF1002
     public static async Task ApplyAsync(FlagmanDbContext db, CancellationToken ct)
     {
-        foreach (var (table, column, maxLength) in AddedColumns)
+        foreach (var (table, column, sqliteType, pgType) in AddedColumns)
         {
             if (db.Database.IsNpgsql())
             {
                 await db.Database.ExecuteSqlRawAsync(
-                    $"ALTER TABLE \"{table}\" ADD COLUMN IF NOT EXISTS \"{column}\" character varying({maxLength}) NULL", ct);
+                    $"ALTER TABLE \"{table}\" ADD COLUMN IF NOT EXISTS \"{column}\" {pgType} NULL", ct);
             }
             else if (db.Database.IsSqlite() && !await SqliteHasColumnAsync(db, table, column, ct))
             {
-                await db.Database.ExecuteSqlRawAsync($"ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" TEXT NULL", ct);
+                await db.Database.ExecuteSqlRawAsync($"ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" {sqliteType} NULL", ct);
             }
+        }
+        await EnsureTablesAsync(db, ct);
+    }
+
+    private static async Task EnsureTablesAsync(FlagmanDbContext db, CancellationToken ct)
+    {
+        var script = db.Database.GenerateCreateScript();
+        foreach (var raw in script.Split(';'))
+        {
+            var sql = raw.Trim();
+            if (sql.Length == 0) continue;
+            var table = NewTables.FirstOrDefault(t =>
+                sql.StartsWith($"CREATE TABLE \"{t}\"", StringComparison.Ordinal) ||
+                (sql.Contains("INDEX", StringComparison.Ordinal) && sql.Contains($" ON \"{t}\"", StringComparison.Ordinal)));
+            var supplyIndex = sql.Contains("INDEX", StringComparison.Ordinal) && sql.Contains("\"IX_Supplies_SupplierRequestId\"", StringComparison.Ordinal);
+            if (table is null && !supplyIndex) continue;
+            sql = sql.Replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", StringComparison.Ordinal)
+                     .Replace("CREATE UNIQUE INDEX ", "CREATE UNIQUE INDEX IF NOT EXISTS ", StringComparison.Ordinal)
+                     .Replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ", StringComparison.Ordinal);
+            await db.Database.ExecuteSqlRawAsync(sql, ct);
         }
     }
 #pragma warning restore EF1002

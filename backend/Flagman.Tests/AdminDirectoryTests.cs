@@ -69,4 +69,34 @@ public class AdminDirectoryTests
         Assert.Null(dir.Find("FLG-TEST-0002"));
         Assert.Null(dir.Find(""));
     }
+
+    [Fact]
+    public void Parses_role_suffix_and_defaults_to_manager()
+    {
+        var dir = new AdminDirectory("1001:Иван, 1002:Анна:waiter, 1003:ООО Фермер:supplier, 1004:waiter");
+        Assert.Equal(("Иван", Roles.Manager), (dir.Find("1001")!.Name, dir.Find("1001")!.Role));
+        Assert.Equal(("Анна", Roles.Waiter), (dir.Find("1002")!.Name, dir.Find("1002")!.Role));
+        Assert.Equal(("ООО Фермер", Roles.Supplier), (dir.Find("1003")!.Name, dir.Find("1003")!.Role));
+        Assert.Equal(("Официант", Roles.Waiter), (dir.Find("1004")!.Name, dir.Find("1004")!.Role));
+    }
+
+    [Fact]
+    public void Unknown_role_skips_entry_instead_of_giving_manager_rights()
+    {
+        var dir = new AdminDirectory("1001:Иван:admin, 1002:Анна");
+        Assert.Null(dir.Find("1001"));
+        Assert.NotNull(dir.Find("1002"));
+    }
+
+    [Fact]
+    public void Hashed_entry_carries_role_and_stable_key_without_id()
+    {
+        var dir = new AdminDirectory(null, AdminDirectory.HashId("Supplier-1", 1000) + ":ООО Фермер:supplier");
+        var a = dir.Find("Supplier-1")!;
+        Assert.Equal(Roles.Supplier, a.Role);
+        Assert.DoesNotContain("Supplier-1", a.Key);
+        Assert.Equal(a.Key, dir.Accounts.Single().Key);
+        var plain = new AdminDirectory("abc:Х:supplier").Find("abc")!;
+        Assert.DoesNotContain("abc", plain.Key[2..]);
+    }
 }

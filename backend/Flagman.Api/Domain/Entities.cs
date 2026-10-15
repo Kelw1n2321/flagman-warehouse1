@@ -28,6 +28,8 @@ public sealed class Supply
     public DateTime? ReceivedAt { get; set; }
     public SupplyStatus Status { get; set; }
     public string? Note { get; set; }
+    /// <summary>Заявка поставщика, из которой создана поставка (если есть).</summary>
+    public Guid? SupplierRequestId { get; set; }
     public List<SupplyLine> Lines { get; set; } = [];
     public List<ProductBatch> Batches { get; set; } = [];
 }
@@ -131,6 +133,8 @@ public enum MovementType
     SpoilageWriteOff = 3,
     AdjustmentPlus = 4,
     AdjustmentMinus = 5,
+    /// <summary>Возврат списанного из корзины.</summary>
+    Restore = 6,
 }
 
 /// <summary>Журнал движения: каждая операция с партией фиксируется отдельной записью. Quantity со знаком.</summary>
@@ -190,6 +194,73 @@ public sealed class StopListEntry
     public DateTime StartedAt { get; set; }
     public DateTime? EndedAt { get; set; }
     public string Reason { get; set; } = "";
+}
+
+public enum SupplierRequestStatus { Sent = 0, Accepted = 1, Rejected = 2 }
+
+/// <summary>Заявка поставщика на отправку товара. Менеджер принимает её (можно меньше, чем заявлено) или отклоняет.</summary>
+public sealed class SupplierRequest
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Number { get; set; }
+    /// <summary>Ключ учётки поставщика (не сам ID): по нему поставщик видит только свои заявки.</summary>
+    public required string SupplierKey { get; set; }
+    public required string SupplierName { get; set; }
+    public string? Comment { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public SupplierRequestStatus Status { get; set; }
+    public DateTime? DecidedAt { get; set; }
+    public string? DecidedBy { get; set; }
+    public string? RejectionReason { get; set; }
+    public List<SupplierRequestLine> Lines { get; set; } = [];
+}
+
+public sealed class SupplierRequestLine
+{
+    public int Id { get; set; }
+    public Guid RequestId { get; set; }
+    public int ProductId { get; set; }
+    public Product? Product { get; set; }
+    public decimal RequestedQuantity { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    /// <summary>Сколько принял менеджер (null - пока не принято).</summary>
+    public decimal? AcceptedQuantity { get; set; }
+}
+
+public enum HotOverrideMode { Pin = 0, Hide = 1 }
+
+/// <summary>Ручная правка горячих предложений: закрепить блюдо (например, сезонное) или скрыть его.</summary>
+public sealed class HotOfferOverride
+{
+    public int Id { get; set; }
+    public int DishId { get; set; }
+    public HotOverrideMode Mode { get; set; }
+    public string? Note { get; set; }
+    public DateTime? Until { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string CreatedBy { get; set; } = "";
+}
+
+public enum WriteOffKind { Spoilage = 0, Expired = 1 }
+
+/// <summary>Списание в корзине: его можно вернуть на склад или удалить навсегда.</summary>
+public sealed class TrashItem
+{
+    public int Id { get; set; }
+    public int BatchId { get; set; }
+    public int ProductId { get; set; }
+    public decimal Quantity { get; set; }
+    public WriteOffKind Kind { get; set; }
+    public string Reason { get; set; } = "";
+    public DateTime DeletedAt { get; set; }
+    public string DeletedBy { get; set; } = "";
+    public long WriteOffMovementId { get; set; }
+    public StockMovement? WriteOffMovement { get; set; }
+    public DateTime? RestoredAt { get; set; }
+    public string? RestoredBy { get; set; }
+    public long? RestoreMovementId { get; set; }
+    public DateTime? PurgedAt { get; set; }
+    public string? PurgedBy { get; set; }
 }
 
 public sealed class WarehouseSettings

@@ -32,6 +32,15 @@ public sealed record BlockedOffer(int DishId, IReadOnlyList<int> AtRiskProductId
 
 public sealed record HotOffersResult(IReadOnlyList<HotOffer> Offers, IReadOnlyList<BlockedOffer> Blocked);
 
+public sealed record HiddenOffer(HotOfferOverride Override, double? Score);
+
+/// <summary>Горячие предложения после ручных правок менеджера.</summary>
+public sealed record HotOfferView(
+    IReadOnlyList<HotOffer> Offers,
+    IReadOnlyDictionary<int, HotOfferOverride> Pins,
+    IReadOnlyList<BlockedOffer> Blocked,
+    IReadOnlyList<HiddenOffer> Hidden);
+
 /// <summary>
 /// Горячие предложения: какие блюда продавать в первую очередь.
 /// Для каждого продукта с истекающим сроком считаем баллы:
@@ -140,6 +149,44 @@ public static class HotOfferCalculator
         }
 
         return new HotOffersResult(offers.OrderByDescending(o => o.Score).ThenBy(o => o.DishId).ToList(), blocked);
+    }
+
+    /// <summary>
+    /// Применяет правки менеджера. Скрытые блюда убираются из списка (даже если продукты истекают),
+    /// закреплённые идут первыми, а если блюдо не было в расчёте, оно добавляется с пометкой менеджера.
+    /// Правки с прошедшим сроком "до" не учитываются.
+    /// </summary>
+    public static HotOfferView ApplyOverrides(HotOffersResult calc, WarehouseSnapshot s, IReadOnlyList<HotOfferOverride> overrides)
+    {
+        var dishes = s.Dishes.ToDictionary(d => d.Id);
+        var active = overrides.Where(o => (o.Until is null || o.Until > s.Now) && dishes.ContainsKey(o.DishId)).ToList();
+        var hides = active.Where(o => o.Mode == HotOverrideMode.Hide).ToDictionary(o => o.DishId);
+        var pins = active.Where(o => o.Mode == HotOverrideMode.Pin).OrderBy(o => o.CreatedAt).ToDictionary(o => o.DishId);
+
+        var hidden = hides.Values.OrderByDescending(o => o.CreatedAt)
+            .Select(o => new HiddenOffer(o, calc.Offers.FirstOrDefault(x => x.DishId == o.DishId)?.Score)).ToList();
+        var offers = calc.Offers.Where(o => !hides.ContainsKey(o.DishId)).ToList();
+        var blocked = calc.Blocked.Where(b => !hides.ContainsKey(b.DishId)).ToList();
+
+        foreach (var pin in pins.Values)
+        {
+            if (offers.Any(o => o.DishId == pin.DishId) || blocked.Any(b => b.DishId == pin.DishId)) continue;
+            var a = s.DishAvailability[pin.DishId];
+            if (!a.IsAvailable)
+            {
+                blocked.Add(new BlockedOffer(pin.DishId, [], a.Missing.Select(m => m.ProductId).ToList()));
+                continue;
+            }
+            offers.Add(new HotOffer(pin.DishId, 0, "high", a.MaxServings, Math.Min(a.MaxServings, 10), a.LimitingProductId,
+                string.IsNullOrWhiteSpace(pin.Note) ? "Выбор менеджера" : pin.Note, []));
+        }
+
+        var ordered = offers
+            .OrderBy(o => pins.ContainsKey(o.DishId) ? 0 : 1)
+            .ThenBy(o => pins.TryGetValue(o.DishId, out var p) ? p.CreatedAt : DateTime.MaxValue)
+            .ThenByDescending(o => o.Score).ThenBy(o => o.DishId)
+            .ToList();
+        return new HotOfferView(ordered, pins, blocked, hidden);
     }
 
     public static string LevelOf(double score) =>

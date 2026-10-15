@@ -5,10 +5,11 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace Flagman.Api.Api;
 
-public sealed record LoginRequest(string? Id);
+/// <summary>Portal - откуда входят: "staff" (основной сайт) или "supplier" (кабинет поставщика).</summary>
+public sealed record LoginRequest(string? Id, string? Portal = null);
 
-/// <summary>Кто вошёл: имя и хвост ID (сам ID - секрет, на экран целиком не выводится).</summary>
-public sealed record SessionDto(string Name, string IdHint);
+/// <summary>Кто вошёл: имя, роль и хвост ID (сам ID - секрет, на экран целиком не выводится).</summary>
+public sealed record SessionDto(string Name, string IdHint, string Role);
 
 public static class AuthEndpoints
 {
@@ -23,10 +24,15 @@ public static class AuthEndpoints
             if (!admins.IsConfigured)
                 return Results.Problem(statusCode: 503, title: "Вход не настроен: задайте ID администраторов в переменной окружения Auth__AdminIds.");
             if (admins.Find(r.Id) is not { } admin)
-                return Results.Problem(statusCode: 401, title: "Неверный ID администратора.");
+                return Results.Problem(statusCode: 401, title: "Неверный ID.");
+            var supplierPortal = string.Equals(r.Portal, "supplier", StringComparison.OrdinalIgnoreCase);
+            if (supplierPortal && admin.Role != Roles.Supplier)
+                return Results.Problem(statusCode: 403, title: "Это ID сотрудника ресторана. Войдите на основном сайте.");
+            if (!supplierPortal && admin.Role == Roles.Supplier)
+                return Results.Problem(statusCode: 403, title: "Это ID поставщика. Войдите в кабинете поставщика: /supplier");
 
             var identity = new ClaimsIdentity(
-                [new Claim(AdminIdClaim, admin.Id), new Claim(ClaimTypes.Name, admin.Name)],
+                [new Claim(AdminIdClaim, admin.Id), new Claim(ClaimTypes.Name, admin.Name), new Claim(ClaimTypes.Role, admin.Role)],
                 CookieAuthenticationDefaults.AuthenticationScheme);
             await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
             return Results.Ok(ToDto(admin));
@@ -45,5 +51,5 @@ public static class AuthEndpoints
     }
 
     private static SessionDto ToDto(AdminAccount a) =>
-        new(a.Name, a.Id.Length <= 4 ? new string('•', a.Id.Length) : "••" + a.Id[^2..]);
+        new(a.Name, a.Id.Length <= 4 ? new string('•', a.Id.Length) : "••" + a.Id[^2..], a.Role);
 }

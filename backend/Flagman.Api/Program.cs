@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Flagman.Api.Api;
 using Flagman.Api.Data;
@@ -69,15 +70,19 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     // API отвечает кодами, а не перенаправлением на страницу входа.
     o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
     o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
-    // ID убрали из настроек - его сессии перестают действовать сразу, а не через 12 часов.
+    // ID убрали из настроек или поменяли роль - старая сессия перестаёт действовать сразу.
     o.Events.OnValidatePrincipal = ctx =>
     {
         var admins = ctx.HttpContext.RequestServices.GetRequiredService<AdminDirectory>();
-        if (admins.Find(ctx.Principal?.FindFirst(AuthEndpoints.AdminIdClaim)?.Value) is null) ctx.RejectPrincipal();
+        var account = admins.Find(ctx.Principal?.FindFirst(AuthEndpoints.AdminIdClaim)?.Value);
+        if (account is null || account.Role != ctx.Principal?.FindFirst(ClaimTypes.Role)?.Value) ctx.RejectPrincipal();
         return Task.CompletedTask;
     };
 });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(Policies.Staff, p => p.RequireRole(Roles.Manager, Roles.Waiter))
+    .AddPolicy(Policies.Manager, p => p.RequireRole(Roles.Manager))
+    .AddPolicy(Policies.Supplier, p => p.RequireRole(Roles.Supplier));
 // На Render приложение стоит за прокси, берём https из X-Forwarded-Proto.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
@@ -114,20 +119,21 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseDefaultFiles();
-// index.html не кэшируется (иначе после сборки браузер держит старые ассеты), хэшированные ассеты - надолго.
+// html-страницы не кэшируются (иначе после сборки браузер держит старые ассеты), хэшированные ассеты - надолго.
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl =
-        ctx.File.Name == "index.html" ? "no-cache" : "public, max-age=31536000, immutable",
+        ctx.File.Name.EndsWith(".html", StringComparison.Ordinal) ? "no-cache" : "public, max-age=31536000, immutable",
 });
 // Проверка живости для Render - без входа и без данных склада.
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapFlagmanAuth();
+app.MapFlagmanSupplier();
 app.MapFlagmanApi();
-app.MapFallbackToFile("index.html", new StaticFileOptions
-{
-    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
-});
+var noCache = new StaticFileOptions { OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache" };
+// Кабинет поставщика - отдельная страница на том же сервере: /supplier
+app.MapFallbackToFile("/supplier/{*path:nonfile}", "supplier.html", noCache);
+app.MapFallbackToFile("index.html", noCache);
 
 using (var scope = app.Services.CreateScope())
 {

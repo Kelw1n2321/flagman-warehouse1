@@ -24,7 +24,7 @@ public sealed record OrderOutcome(Order Order, OrderEvaluation Evaluation, IRead
 /// <summary>
 /// Все операции, которые меняют склад. Каждая идёт в одной транзакции, так что либо сохраняется всё, либо ничего.
 /// </summary>
-public sealed class WarehouseService(
+public sealed partial class WarehouseService(
     FlagmanDbContext db,
     WriteGate gate,
     TimeProvider clock,
@@ -350,8 +350,9 @@ public sealed class WarehouseService(
             return b;
         }, ct);
 
-    public Task<ProductBatch> WriteOffBatchAsync(int batchId, decimal? quantity, string? reason, CancellationToken ct) =>
-        ExecuteAsync("batch.written-off", null, async now =>
+    /// <summary>Списание части или всей партии. Списанное уходит в корзину, откуда его можно вернуть.</summary>
+    public Task<ProductBatch> WriteOffBatchAsync(int batchId, decimal? quantity, string? reason, CancellationToken ct, DateTime? at = null, string? actor = null) =>
+        ExecuteAsync("batch.written-off", at, async now =>
         {
             var b = await db.Batches.FirstOrDefaultAsync(x => x.Id == batchId, ct) ?? throw DomainException.NotFound("Партия");
             if (b.State != BatchState.Active || b.QuantityRemaining <= 0) throw DomainException.Conflict("В партии нет остатка для списания.");
@@ -362,21 +363,24 @@ public sealed class WarehouseService(
             b.QuantityRemaining -= qty;
             if (b.QuantityRemaining == 0) b.State = expired ? BatchState.WrittenOff : BatchState.Depleted;
             b.Version++;
-            db.Movements.Add(new StockMovement
+            var text = string.IsNullOrWhiteSpace(reason) ? (expired ? "Списание просрочки" : "Порча") : reason.Trim()[..Math.Min(reason.Trim().Length, 200)];
+            var movement = new StockMovement
             {
                 ProductId = b.ProductId, BatchId = b.Id,
                 Type = expired ? MovementType.ExpiredWriteOff : MovementType.SpoilageWriteOff,
                 Quantity = -qty, BatchBalanceAfter = b.QuantityRemaining, CreatedAt = now,
-                Reason = string.IsNullOrWhiteSpace(reason) ? (expired ? "Списание просрочки" : "Порча") : reason.Trim(),
-            });
+                Reason = text,
+            };
+            db.Movements.Add(movement);
+            AddToTrash(b, qty, expired ? WriteOffKind.Expired : WriteOffKind.Spoilage, text, movement, now, actor);
             return b;
         }, ct);
 
     /// <summary>Списывает все просроченные остатки. Возвращает число списанных партий.</summary>
-    public Task<int> WriteOffExpiredAsync(bool automatic, CancellationToken ct, DateTime? at = null) =>
-        ExecuteAsync("batch.expired-written-off", at, now => WriteOffExpiredInternalAsync(automatic, now, ct), ct);
+    public Task<int> WriteOffExpiredAsync(bool automatic, CancellationToken ct, DateTime? at = null, string? actor = null) =>
+        ExecuteAsync("batch.expired-written-off", at, now => WriteOffExpiredInternalAsync(automatic, now, ct, actor), ct);
 
-    private async Task<int> WriteOffExpiredInternalAsync(bool automatic, DateTime now, CancellationToken ct)
+    private async Task<int> WriteOffExpiredInternalAsync(bool automatic, DateTime now, CancellationToken ct, string? actor = null)
     {
         var expired = await db.Batches.Include(b => b.Product)
             .Where(b => b.State == BatchState.Active && b.QuantityRemaining > 0 && b.ExpiresAt <= now)
@@ -385,12 +389,14 @@ public sealed class WarehouseService(
         var summary = string.Join(", ", expired.Select(b => $"{b.Product!.Name} {Units.Format(b.QuantityRemaining, b.Product.Unit)} ({b.Code})"));
         foreach (var b in expired)
         {
-            db.Movements.Add(new StockMovement
+            var movement = new StockMovement
             {
                 ProductId = b.ProductId, BatchId = b.Id, Type = MovementType.ExpiredWriteOff,
                 Quantity = -b.QuantityRemaining, BatchBalanceAfter = 0, CreatedAt = now,
                 Reason = automatic ? "Автоматическое списание просрочки" : "Списание просрочки",
-            });
+            };
+            db.Movements.Add(movement);
+            AddToTrash(b, b.QuantityRemaining, WriteOffKind.Expired, movement.Reason, movement, now, automatic ? "Автосписание" : actor);
             b.QuantityRemaining = 0;
             b.State = BatchState.WrittenOff;
             b.Version++;

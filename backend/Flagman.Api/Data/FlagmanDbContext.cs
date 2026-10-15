@@ -20,6 +20,10 @@ public sealed class FlagmanDbContext(DbContextOptions<FlagmanDbContext> options)
     public DbSet<Alert> Alerts => Set<Alert>();
     public DbSet<StopListEntry> StopListEntries => Set<StopListEntry>();
     public DbSet<WarehouseSettings> Settings => Set<WarehouseSettings>();
+    public DbSet<SupplierRequest> SupplierRequests => Set<SupplierRequest>();
+    public DbSet<SupplierRequestLine> SupplierRequestLines => Set<SupplierRequestLine>();
+    public DbSet<HotOfferOverride> HotOfferOverrides => Set<HotOfferOverride>();
+    public DbSet<TrashItem> TrashItems => Set<TrashItem>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -44,6 +48,41 @@ public sealed class FlagmanDbContext(DbContextOptions<FlagmanDbContext> options)
             e.HasIndex(s => s.SupplyNumber).IsUnique();
             e.HasMany(s => s.Lines).WithOne().HasForeignKey(l => l.SupplyId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(s => s.Batches).WithOne(x => x.Supply).HasForeignKey(x => x.SupplyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Supply>().HasIndex(s => s.SupplierRequestId);
+
+        b.Entity<SupplierRequest>(e =>
+        {
+            e.HasIndex(r => r.Number).IsUnique();
+            e.HasIndex(r => r.SupplierKey);
+            e.Property(r => r.Number).HasMaxLength(40);
+            e.Property(r => r.SupplierKey).HasMaxLength(64);
+            e.Property(r => r.SupplierName).HasMaxLength(120);
+            e.Property(r => r.Comment).HasMaxLength(500);
+            e.Property(r => r.DecidedBy).HasMaxLength(120);
+            e.Property(r => r.RejectionReason).HasMaxLength(300);
+            e.HasMany(r => r.Lines).WithOne().HasForeignKey(l => l.RequestId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<SupplierRequestLine>().HasOne(l => l.Product).WithMany().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<HotOfferOverride>(e =>
+        {
+            e.HasIndex(o => o.DishId).IsUnique();
+            e.HasOne<Dish>().WithMany().HasForeignKey(o => o.DishId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(o => o.Note).HasMaxLength(80);
+            e.Property(o => o.CreatedBy).HasMaxLength(120);
+        });
+
+        b.Entity<TrashItem>(e =>
+        {
+            e.HasIndex(t => new { t.PurgedAt, t.RestoredAt, t.DeletedAt });
+            e.HasOne<ProductBatch>().WithMany().HasForeignKey(t => t.BatchId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(t => t.WriteOffMovement).WithMany().HasForeignKey(t => t.WriteOffMovementId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(t => t.Reason).HasMaxLength(200);
+            e.Property(t => t.DeletedBy).HasMaxLength(120);
+            e.Property(t => t.RestoredBy).HasMaxLength(120);
+            e.Property(t => t.PurgedBy).HasMaxLength(120);
         });
 
         b.Entity<SupplyLine>().HasOne(l => l.Product).WithMany().HasForeignKey(l => l.ProductId);

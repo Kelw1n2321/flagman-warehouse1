@@ -4,10 +4,35 @@ using System.Text;
 
 namespace Flagman.Api.Services;
 
-public sealed record AdminAccount(string Id, string Name);
+/// <summary>Key - постоянный идентификатор учётки без самого ID (по нему поставщик видит свои заявки).</summary>
+public sealed record AdminAccount(string Id, string Name, string Role, string Key);
+
+public static class Roles
+{
+    public const string Manager = "manager";
+    public const string Waiter = "waiter";
+    public const string Supplier = "supplier";
+    public static readonly string[] All = [Manager, Waiter, Supplier];
+
+    public static string DefaultName(string role) => role switch
+    {
+        Waiter => "Официант",
+        Supplier => "Поставщик",
+        _ => "Администратор",
+    };
+}
+
+public static class Policies
+{
+    /// <summary>Менеджер и официант.</summary>
+    public const string Staff = "staff";
+    public const string Manager = "manager";
+    public const string Supplier = "supplier";
+}
 
 /// <summary>
-/// Список админов. Auth:AdminIds - ID через запятую, после двоеточия можно имя: "1001:Иван, 1002".
+/// Список учёток. Auth:AdminIds - ID через запятую, дальше через двоеточие имя и роль:
+/// "1001:Иван, 1002:Анна:waiter, 1003:ООО Фермер:supplier". Без роли - менеджер.
 /// Auth:AdminIdHashes - то же самое, но вместо ID хеш PBKDF2, его можно хранить в репозитории.
 /// </summary>
 public sealed class AdminDirectory
@@ -17,7 +42,7 @@ public sealed class AdminDirectory
     // Проверка хеша медленная намеренно (~десятки мс), а ID сверяется на каждом запросе: успешные проверки запоминаются.
     private readonly ConcurrentDictionary<string, AdminAccount> _verified = new();
 
-    private sealed record HashedAdmin(int Iterations, byte[] Salt, byte[] Hash, string Name);
+    private sealed record HashedAdmin(int Iterations, byte[] Salt, byte[] Hash, string Name, string Role);
 
     /// <summary>Имена переменной, которые принимаются (регистр не важен): основное и частые варианты набора.</summary>
     public static readonly string[] ConfigKeys = ["Auth:AdminIds", "Auth_AdminIds", "AUTH_ADMIN_IDS", "ADMIN_IDS", "AdminIds"];
@@ -43,6 +68,36 @@ public sealed class AdminDirectory
 
     public bool IsConfigured => _admins.Count > 0 || _hashed.Count > 0;
 
+    /// <summary>Все учётки без самих ID (для демо-данных).</summary>
+    public IReadOnlyList<(string Key, string Name, string Role)> Accounts =>
+        [.. _admins.Select(a => (a.Key, a.Name, a.Role)), .. _hashed.Select(h => (HashedKey(h.Salt), h.Name, h.Role))];
+
+    /// <summary>
+    /// Разбирает "имя:роль" после ID. Роль только из списка; если в конце не роль, а что-то другое,
+    /// запись пропускается, чтобы опечатка не дала права менеджера.
+    /// </summary>
+    private static (string Name, string Role)? ParseNameRole(string rest)
+    {
+        rest = rest.Trim();
+        var role = Roles.Manager;
+        var last = rest.LastIndexOf(':');
+        if (last >= 0)
+        {
+            role = rest[(last + 1)..].Trim().ToLowerInvariant();
+            if (!Roles.All.Contains(role)) return null;
+            rest = rest[..last].Trim();
+        }
+        else if (Roles.All.Contains(rest.ToLowerInvariant()))
+        {
+            role = rest.ToLowerInvariant();
+            rest = "";
+        }
+        return (rest.Length > 0 ? rest : Roles.DefaultName(role), role);
+    }
+
+    private static string HashedKey(byte[] salt) => "h:" + Convert.ToBase64String(salt);
+    private static string PlainKey(string id) => "p:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id)))[..16].ToLowerInvariant();
+
     private static IReadOnlyList<HashedAdmin> ParseHashes(string? raw)
     {
         var list = new List<HashedAdmin>();
@@ -50,11 +105,11 @@ public sealed class AdminDirectory
         {
             var sep = entry.IndexOf(':');
             var parts = (sep < 0 ? entry : entry[..sep]).Split('$');
-            var name = sep < 0 ? "" : entry[(sep + 1)..].Trim();
+            if (ParseNameRole(sep < 0 ? "" : entry[(sep + 1)..]) is not { } nr) continue;
             if (parts.Length != 4 || parts[0] != "pbkdf2-sha256" || !int.TryParse(parts[1], out var iterations)) continue;
             try
             {
-                list.Add(new HashedAdmin(iterations, Convert.FromBase64String(parts[2]), Convert.FromBase64String(parts[3]), name.Length > 0 ? name : "Администратор"));
+                list.Add(new HashedAdmin(iterations, Convert.FromBase64String(parts[2]), Convert.FromBase64String(parts[3]), nr.Name, nr.Role));
             }
             catch (FormatException) { }
         }
@@ -82,9 +137,9 @@ public sealed class AdminDirectory
         {
             var sep = entry.IndexOf(':');
             var id = (sep < 0 ? entry : entry[..sep]).Trim();
-            var name = sep < 0 ? "" : entry[(sep + 1)..].Trim();
+            if (ParseNameRole(sep < 0 ? "" : entry[(sep + 1)..]) is not { } nr) continue;
             if (id.Length == 0 || list.Any(a => a.Id == id)) continue;
-            list.Add(new AdminAccount(id, name.Length > 0 ? name : "Администратор"));
+            list.Add(new AdminAccount(id, nr.Name, nr.Role, PlainKey(id)));
         }
         return list;
     }
@@ -104,7 +159,7 @@ public sealed class AdminDirectory
         if (_verified.TryGetValue(key, out var cached)) return cached;
         foreach (var h in _hashed)
             if (CryptographicOperations.FixedTimeEquals(Rfc2898DeriveBytes.Pbkdf2(input, h.Salt, h.Iterations, HashAlgorithmName.SHA256, h.Hash.Length), h.Hash))
-                return _verified[key] = new AdminAccount(Encoding.UTF8.GetString(input), h.Name);
+                return _verified[key] = new AdminAccount(Encoding.UTF8.GetString(input), h.Name, h.Role, HashedKey(h.Salt));
         return null;
     }
 }

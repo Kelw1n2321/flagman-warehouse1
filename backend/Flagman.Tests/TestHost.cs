@@ -52,6 +52,12 @@ public sealed class TestHost : IAsyncDisposable
         return await action(scope.ServiceProvider.GetRequiredService<WarehouseService>(), scope.ServiceProvider.GetRequiredService<FlagmanDbContext>());
     }
 
+    public async Task<T> Query<T>(Func<QueryService, Task<T>> action)
+    {
+        await using var scope = Scope();
+        return await action(scope.ServiceProvider.GetRequiredService<QueryService>());
+    }
+
     public async Task<int> AddProductAsync(string sku, string unit = "kg", decimal min = 0, int? shelf = 72)
     {
         return await With(async (_, db) =>
