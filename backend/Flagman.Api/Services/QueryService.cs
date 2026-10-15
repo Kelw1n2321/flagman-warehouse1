@@ -144,9 +144,14 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         var s = await warehouse.LoadSnapshotAsync(Now, ct);
         var q = db.Movements.AsNoTracking().AsQueryable();
         if (productId is { } pid) q = q.Where(m => m.ProductId == pid);
-        var list = await q.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Take(Math.Clamp(limit, 1, 500) * 2).ToListAsync(ct);
-        if (!string.IsNullOrEmpty(type)) list = list.Where(m => MovementName(m.Type) == type).ToList();
-        return await MapMovementsAsync(list.Take(Math.Clamp(limit, 1, 500)).ToList(), s, ct);
+        // Фильтр по типу - в запросе к базе, иначе старые операции нужного типа не попали бы в выборку.
+        if (!string.IsNullOrEmpty(type))
+        {
+            var types = Enum.GetValues<MovementType>().Where(t => MovementName(t) == type).ToList();
+            q = q.Where(m => types.Contains(m.Type));
+        }
+        var list = await q.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Take(Math.Clamp(limit, 1, 500)).ToListAsync(ct);
+        return await MapMovementsAsync(list, s, ct);
     }
 
     // Партии
@@ -347,8 +352,8 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
 
         var since24 = s.Now.AddHours(-24);
         var dishMap = await db.Dishes.AsNoTracking().ToDictionaryAsync(d => d.Id, ct);
-        var returned = (await db.StopListEntries.AsNoTracking().Where(e => e.EndedAt != null).ToListAsync(ct))
-            .Where(e => e.EndedAt >= since24 && !openStops.ContainsKey(e.DishId))
+        var returned = (await db.StopListEntries.AsNoTracking().Where(e => e.EndedAt != null && e.EndedAt >= since24).ToListAsync(ct))
+            .Where(e => !openStops.ContainsKey(e.DishId))
             .OrderByDescending(e => e.EndedAt)
             .DistinctBy(e => e.DishId)
             .Select(e => new StopReturnDto(e.DishId, dishMap[e.DishId].Name, dishMap[e.DishId].Icon, e.StartedAt, e.EndedAt!.Value))
@@ -409,32 +414,38 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         var from = TimeZones.LocalToUtc(firstDay, tz);
         var prevFrom = TimeZones.LocalToUtc(firstDay.AddDays(-days), tz);
 
-        var orders = (await db.Orders.AsNoTracking().Include(o => o.Lines)
-                .Where(o => o.Status == OrderStatus.Completed).ToListAsync(ct))
-            .Where(o => o.CreatedAt >= prevFrom && o.CreatedAt <= s.Now).ToList();
-        var lines = orders.SelectMany(o => o.Lines.Select(l => (l.DishId, l.Servings, o.Id, o.CreatedAt))).ToList();
-        var current = lines.Where(l => l.CreatedAt >= from).ToList();
-        var previous = lines.Where(l => l.CreatedAt < from).ToList();
+        // Из базы берутся только заказы за текущий и прошлый период, а не вся история.
+        var now = s.Now;
+        var lines = await db.OrderLines.AsNoTracking()
+            .Join(db.Orders.Where(o => o.Status == OrderStatus.Completed && o.CreatedAt >= prevFrom && o.CreatedAt <= now),
+                l => l.OrderId, o => o.Id, (l, o) => new { l.DishId, l.Servings, OrderId = o.Id, o.CreatedAt })
+            .ToListAsync(ct);
+        var current = lines.Where(l => l.CreatedAt >= from)
+            .Select(l => (l.DishId, l.Servings, l.OrderId, Day: (TimeZones.UtcToLocal(l.CreatedAt, tz).Date - firstDay).Days))
+            .ToList();
+        var byDish = current.ToLookup(l => l.DishId);
+        var prevByDish = lines.Where(l => l.CreatedAt < from).GroupBy(l => l.DishId).ToDictionary(g => g.Key, g => g.Sum(l => l.Servings));
 
         var dishes = await db.Dishes.AsNoTracking().ToDictionaryAsync(d => d.Id, ct);
-        var sold = current.Select(l => l.DishId).ToHashSet();
-        var openStops = await db.StopListEntries.AsNoTracking().Where(e => e.EndedAt == null).Select(e => e.DishId).ToListAsync(ct);
+        var openStops = (await db.StopListEntries.AsNoTracking().Where(e => e.EndedAt == null).Select(e => e.DishId).ToListAsync(ct)).ToHashSet();
         // В рейтинге все блюда меню (и непроданные - внизу) плюс выключенные, если их успели продать за период.
-        var candidates = dishes.Values.Where(d => d.IsActive || sold.Contains(d.Id))
+        var candidates = dishes.Values.Where(d => d.IsActive || byDish.Contains(d.Id))
             .Where(d => string.IsNullOrWhiteSpace(category) || d.Category == category).ToList();
-        var totalServings = current.Where(l => candidates.Any(d => d.Id == l.DishId)).Sum(l => l.Servings);
+        var candidateIds = candidates.Select(d => d.Id).ToHashSet();
+        var inScope = current.Where(l => candidateIds.Contains(l.DishId)).ToList();
+        var totalServings = inScope.Sum(l => l.Servings);
 
         var rows = candidates.Select(d =>
         {
-            var mine = current.Where(l => l.DishId == d.Id).ToList();
-            var servings = mine.Sum(l => l.Servings);
-            var prev = previous.Where(l => l.DishId == d.Id).Sum(l => l.Servings);
-            var daily = Enumerable.Range(0, days)
-                .Select(i => mine.Where(l => TimeZones.UtcToLocal(l.CreatedAt, tz).Date == firstDay.AddDays(i)).Sum(l => l.Servings)).ToList();
+            var mine = byDish[d.Id];
+            var daily = new int[days];
+            foreach (var l in mine)
+                if (l.Day >= 0 && l.Day < days) daily[l.Day] += l.Servings;
             var availability = s.DishAvailability.GetValueOrDefault(d.Id);
             return new
             {
-                Dish = d, Servings = servings, Orders = mine.Select(l => l.Id).Distinct().Count(), Prev = prev, Daily = daily,
+                Dish = d, Servings = mine.Sum(l => l.Servings), Orders = mine.Select(l => l.OrderId).Distinct().Count(),
+                Prev = prevByDish.GetValueOrDefault(d.Id), Daily = daily,
                 MaxServings = availability?.MaxServings ?? 0,
                 Limiting = availability?.LimitingProductId is { } lp ? s.Products[lp].Name : null,
             };
@@ -448,7 +459,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             r.Daily, r.Dish.IsActive, r.MaxServings, openStops.Contains(r.Dish.Id), r.Limiting)).ToList();
 
         return new TopDishesDto(days, from, totalServings,
-            current.Where(l => candidates.Any(d => d.Id == l.DishId)).Select(l => l.Id).Distinct().Count(),
+            inScope.Select(l => l.OrderId).Distinct().Count(),
             Enumerable.Range(0, days).Select(i => firstDay.AddDays(i).ToString("dd.MM")).ToList(),
             items,
             dishes.Values.Where(d => d.IsActive).Select(d => d.Category).Where(c => c.Length > 0).Distinct().Order().ToList());
@@ -580,11 +591,11 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         var settings = await warehouse.GetSettingsAsync(ct);
         var windowStart = s.Now.AddDays(-settings.ForecastWindowDays);
         var ids = productIds.ToList();
+        var now = s.Now;
         var consumed = (await db.Movements.AsNoTracking()
-                .Where(m => m.Type == MovementType.Consumption && ids.Contains(m.ProductId))
-                .Select(m => new { m.ProductId, m.Quantity, m.CreatedAt })
+                .Where(m => m.Type == MovementType.Consumption && ids.Contains(m.ProductId) && m.CreatedAt >= windowStart && m.CreatedAt <= now)
+                .Select(m => new { m.ProductId, m.Quantity })
                 .ToListAsync(ct))
-            .Where(m => m.CreatedAt >= windowStart && m.CreatedAt <= s.Now)
             .GroupBy(m => m.ProductId)
             .ToDictionary(g => g.Key, g => -g.Sum(x => x.Quantity));
         var first = await db.Movements.AsNoTracking().OrderBy(m => m.Id).Select(m => (DateTime?)m.CreatedAt).FirstOrDefaultAsync(ct);
@@ -607,10 +618,11 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
         var undone = (await db.TrashItems.AsNoTracking().Where(t => t.RestoreMovementId != null)
                 .Select(t => new { t.WriteOffMovementId, t.RestoreMovementId }).ToListAsync(ct))
             .SelectMany(t => new[] { t.WriteOffMovementId, t.RestoreMovementId!.Value }).ToHashSet();
-        var movements = (await db.Movements.AsNoTracking().ToListAsync(ct))
-            .Where(m => m.CreatedAt >= from && m.CreatedAt <= s.Now && InCategory(m.ProductId) && !undone.Contains(m.Id)).ToList();
-        var orders = (await db.Orders.AsNoTracking().Include(o => o.Shortages).Include(o => o.Lines).AsSplitQuery().ToListAsync(ct))
-            .Where(o => o.CreatedAt >= from).ToList();
+        var now = s.Now;
+        var movements = (await db.Movements.AsNoTracking().Where(m => m.CreatedAt >= from && m.CreatedAt <= now).ToListAsync(ct))
+            .Where(m => InCategory(m.ProductId) && !undone.Contains(m.Id)).ToList();
+        var orders = await db.Orders.AsNoTracking().Where(o => o.CreatedAt >= from)
+            .Include(o => o.Shortages).Include(o => o.Lines).AsSplitQuery().ToListAsync(ct);
         var dishes = await db.Dishes.AsNoTracking().Include(d => d.Ingredients).ToListAsync(ct);
         // Заказ относится к категории, если хотя бы одно блюдо использует продукт этой категории.
         bool OrderInCategory(Order o) => string.IsNullOrWhiteSpace(category) ||
@@ -655,8 +667,7 @@ public sealed class QueryService(FlagmanDbContext db, WarehouseService warehouse
             return new DeficitDto(p.Id, p.Name, p.Unit, p.Icon, shortages.Count, shortages.Sum(x => x.Missing), blockedNow, below, score);
         }).Where(d => d.Score > 0).OrderByDescending(d => d.Score).ThenBy(d => d.Name).Take(10).ToList();
 
-        var entries = (await db.StopListEntries.AsNoTracking().ToListAsync(ct))
-            .Where(e => (e.EndedAt ?? s.Now) >= from).ToList();
+        var entries = await db.StopListEntries.AsNoTracking().Where(e => e.EndedAt == null || e.EndedAt >= from).ToListAsync(ct);
         var stopFrequency = entries.GroupBy(e => e.DishId).Select(g =>
         {
             var d = dishes.First(x => x.Id == g.Key);

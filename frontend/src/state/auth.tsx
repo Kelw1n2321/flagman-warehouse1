@@ -43,7 +43,7 @@ export function AuthProvider({ portal = 'staff', children }: { portal?: Portal; 
       .get<Session>(`/auth/me?portal=${portal}`)
       .then((s) => {
         if (!alive) return;
-        // Cookie общая для обоих сайтов: вход с другой ролью здесь не считается.
+        // У каждого сайта своя cookie, но на всякий случай учётка не той роли здесь не считается входом.
         if (!fits(portal, s.role)) {
           setSession(null);
           setStatus('anonymous');

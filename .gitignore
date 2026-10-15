@@ -5,3 +5,7 @@ obj/
 App_Data/
 backend/Flagman.Api/wwwroot/
 *.log
+
+# сборка TypeScript
+*.tsbuildinfo
+.DS_Store

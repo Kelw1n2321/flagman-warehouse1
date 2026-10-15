@@ -122,7 +122,9 @@ function TopRow({ i, max, labels }: { i: TopDish; max: number; labels: string[] 
         <Spark values={i.daily} labels={labels} />
       </td>
       <td style={{ whiteSpace: 'nowrap' }}>
-        {i.inStopList || i.maxServings === 0 ? (
+        {!i.isActive ? (
+          <Tag kind="draft">Снято с меню</Tag>
+        ) : i.inStopList || i.maxServings === 0 ? (
           <Tag kind="critical">Стоп-лист</Tag>
         ) : (
           <span>

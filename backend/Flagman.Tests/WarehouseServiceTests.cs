@@ -254,4 +254,17 @@ public sealed class WarehouseServiceTests : IAsyncLifetime
         Assert.NotNull(f.DepletionAt);
         Assert.InRange(f.HoursToDepletion!.Value, 59, 61); // 10 ч + 5 л / 0,1 л/ч
     }
+
+    [Fact]
+    public async Task Journal_TypeFilter_FindsOlderOperations_BeyondRecentOnes()
+    {
+        var flour = await _host.AddProductAsync("FLR");
+        await _host.ReceiveAsync((flour, 10, 500));
+        var dish = await _host.AddDishAsync("Блины", (flour, 0.1m));
+        for (var i = 0; i < 3; i++) await Order((dish, 1));
+
+        // Приёмка - самая старая операция; при лимите 1 она всё равно должна найтись по типу.
+        var receipts = await _host.Query(q => q.GetMovementsAsync(null, "receipt", 1, default));
+        Assert.Equal("receipt", receipts.Single().Type);
+    }
 }

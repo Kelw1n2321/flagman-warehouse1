@@ -37,9 +37,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   const text = await res.text();
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
-    // 403 на сводке значит, что в этом браузере вошли с другой ролью (например, в кабинете поставщика).
-    if ((res.status === 401 && !path.startsWith('/auth/')) || (res.status === 403 && path === '/summary'))
-      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    if (res.status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     const problem = (data ?? {}) as { title?: string; errors?: Record<string, string[]> };
     throw new ApiError(problem.title ?? `Ошибка ${res.status}`, res.status, problem.errors ?? {}, data);
   }
