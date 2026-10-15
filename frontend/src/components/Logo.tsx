@@ -1,4 +1,4 @@
-/** Знак «Свежачок!»: поварской колпак, галочка свежести и лист. Тёмные части берут цвет темы, лист всегда зелёный. */
+/** Знак "Свежачок!": поварской колпак, галочка свежести и лист. Тёмные части берут цвет темы, лист всегда зелёный. */
 export function LogoMark({ size = 22 }: { size?: number }) {
   return (
     <svg className="logo-mark" width={size} height={size} viewBox="0 0 64 64" aria-hidden focusable="false">
